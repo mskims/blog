@@ -14,9 +14,10 @@ tags: [python]
 
 > An iterator is an object that implements next. next is expected to return the next element of the iterable object that returned it, and raise a StopIteration exception when no more elements are available.
 
-```python
+
+{% highlight python %}
 def some(x):
   return x+1
 
 print(some(1))
-```
+{% endhighlight %}
