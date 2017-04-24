@@ -48,22 +48,22 @@ React는 사실 간단한 View(UI) 라이브러리 이다. 공식 홈페이지�
 자유로운 구조와 확장성을 보장하는 React 와 달리 전체 프로젝트 구조를 제한하는 점이 마음에 들지 않았다.
 
 ## Static type check
-React 의 특이한 점중 하나가, 리엑트는 정적 타입 체크를 가능하게 해주는 TypeScript 대신 Flow 라는 타입 분석기 사용을 권장한다.
+React 의 특이한 점중 하나가, 리엑트는 정적 타입 체크를 가능하게 해주는 TypeScript 대신 Flow 라는 타입 분석기 사용을 권장한다. [#Post]
 
-(#Post)[https://discuss.reactjs.org/t/if-typescript-is-so-great-how-come-all-notable-reactjs-projects-use-babel/4887/2]
+(https://discuss.reactjs.org/t/if-typescript-is-so-great-how-come-all-notable-reactjs-projects-use-babel/4887/2)
 
 위 글은 Babel과 Flow팀 멤버가 리엑트 공식 포럼에서 답변한 내용인데, 대충 말하자면 빠르게 변화하는 생태계속에서 개발자들이 타입 체크에 쓰는 시간을 줄이고 타입때문에 커스텀하기 어렵지 않도록 hackable 하게 만들겠다는 이야기 이다.
 
 ## Interesting projects
-- 모바일 애플리케이션 개발을 가능하게 해주는 (react-native)[https://facebook.github.io/react-native]
-- VR 웹사이트 개발을 가능하게 하는 (react-vr)[https://facebook.github.io/react-vr/]
+- 모바일 애플리케이션 개발을 가능하게 해주는 [react-native](https://facebook.github.io/react-native)
+- VR 웹사이트 개발을 가능하게 하는 [react-vr](https://facebook.github.io/react-vr)
 
 #### References
-* https://facebook.github.io/react/
-* http://blog.coderifleman.com/2015/06/23/learning-react-1/
+* [https://facebook.github.io/react/](https://facebook.github.io/react/)
+* [http://blog.coderifleman.com/2015/06/23/learning-react-1/](http://blog.coderifleman.com/2015/06/23/learning-react-1/)
 
 # Redux
 `Redux` 는 `flux` 라는 아키텍쳐에 기반한 단방향 데이터 흐름을 활용한 상태(State) 저장소 이다.
 
 #### References
-* http://redux.js.org/
+* [http://redux.js.org/](http://redux.js.org/)
