@@ -1,0 +1,42 @@
+---
+layout: post
+title: "My Resume"
+---
+
+# 김민석 (MinSeok Kim)
+
+# Techincal Skills
+## Languages
+
+| Language            | Expert | Skilled | Enthusiastic |
+|---------------------|--------|---------|--------------|
+| Javascript (ES6, 7) | ✔      | ✔       | ✔            |
+| Javascript (ES5)    | ✔      | ✔       |              |
+| Python (2, 3)       |        | ✔       | ✔            |
+| HTML/CSS            | ✔      | ✔       |              |
+| PHP                 |        | ✔       |              |
+| Node.js             |        |         | ✔            |
+
+## Frameworks / Libraries
+
+| Framework/Library     | Expert | Skilled | Enthusiastic |
+|-----------------------|--------|---------|--------------|
+| React/Redux (JS)      |        | ✔       | ✔            |
+| Angular (JS)          |        |         | ✔            |
+| JQuery/JQueryUI (JS)  | ✔      | ✔       | ✔            |
+| Flask/Django (Python) |        | ✔       | ✔            |
+| BootStrap (HTML/JS)   | ✔      | ✔       | ✔            |
+| **HARD CODING**       | ✔      | ✔       | ✔            |
+
+## Tools / Utils
+
+| Tool/Util           | Used | Expert | Skilled | Enthusiastic |
+|---------------------|------|--------|---------|--------------|
+| Docker              | ✔    |        |         | ✔            |
+| SQL                 | ✔    |        | ✔       | ✔            |
+| Git                 | ✔    | ✔      | ✔       |              |
+| AWS (Cloud)         | ✔    |        | ✔       | ✔            |
+| Jenkins, CodeDeploy | ✔    |        | ✔       | ✔            |
+| OpenApi             | ✔    | ✔      | ✔       | ✔            |
+| ElasticSearch       | ✔    |        |         | ✔            |
+| Redis/NoSQL         | ✔    |        |         | ✔            |
