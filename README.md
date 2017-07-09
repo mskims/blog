@@ -1,4 +1,6 @@
 # [http://mskim.blog.me](mskim.blog.me)
+[![Build Status](https://travis-ci.org/mskims/blog.svg?branch=master)](https://travis-ci.org/mskims/blog)
+
 My personal blog. All about my activities, ideas, technologies, and studies
 
 ## How to publish
