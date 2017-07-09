@@ -1,3 +1,6 @@
+.history/
+.idea/
+
 .asset-cache
 _assets/bower
 _site
