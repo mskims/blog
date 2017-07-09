@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <title>house of times | [번역] redux-saga 튜토리얼</title>
+  <meta name="description" content="">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta property="og:title" content="[번역] redux-saga 튜토리얼">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="/posts/redux-saga">
+  <meta property="og:description" content="">
+  <meta property="og:site_name" content="house of times">
+  <meta property="og:image" content="/assets/og-image.jpg">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:url" content="/posts/redux-saga">
+  <meta name="twitter:title" content="[번역] redux-saga 튜토리얼">
+  <meta name="twitter:description" content="">
+  <meta name="twitter:image" content="/assets/og-image.jpg">
+
+  <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png">
+  <link href="/feed.xml" type="application/rss+xml" rel="alternate" title="house of times Last 10 blog posts" />
+
+  
+    <link type="text/css" rel="stylesheet" href="/assets/light.css">
+  
+</head>
+
+<body>
+  <main role="main">
+    <div class="grid grid-centered">
+      <div class="grid-cell">
+        <nav class="header-nav reveal">
+  <a href="/" class="header-logo" title="house of times">house of times</a>
+  <ul class="header-links">
+    
+      <li>
+        <a href="/about" title="About me">
+          <span class="icon icon-android-person"></span>
+        </a>
+      </li>
+    
+    
+    
+    
+      <li>
+        <a href="https://github.com/mskims" target="_blank" title="GitHub">
+          <span class="icon icon-social-github"></span>
+        </a>
+      </li>
+    
+    
+    
+    
+      <li>
+        <a href="https://www.linkedin.com/in/민석-김-ab7021139" target="_blank" title="LinkedIn">
+          <span class="icon icon-social-linkedin"></span>
+        </a>
+      </li>
+    
+    
+    
+      <li>
+        <a href="mailto:its@mskim.me" title="Email">
+          <span class="icon icon-at"></span>
+        </a>
+      </li>
+    
+    
+  </ul>
+</nav>
+
+        <article class="article reveal">
+          <header class="article-header">
+            <h1>[번역] redux-saga 튜토리얼</h1>
+            <p></p>
+            <div class="article-list-footer">
+              <span class="article-list-date">
+                April 27, 2017
+              </span>
+              <span class="article-list-divider">-</span>
+              <span class="article-list-minutes">
+                
+                
+                  14 minute read
+                
+              </span>
+              <span class="article-list-divider">-</span>
+              <div class="article-list-tags">
+                
+                  <a href="/tag/ES6">ES6</a>
+                
+                  <a href="/tag/React">React</a>
+                
+                  <a href="/tag/Redux">Redux</a>
+                
+                  <a href="/tag/translate">translate</a>
+                
+              </div>
+            </div>
+          </header>
+
+          <div class="article-content">
+            <blockquote>
+  <p>이 글은 <a href="https://redux-saga.js.org/">공식문서 의 Beginner tutorial</a> 을 한국어로 번역한 글입니다.</p>
+
+  <p>전체 문서는 <a href="https://mskims.github.io/redux-saga-in-korean/">한국어 번역 문서</a> 를 참조해주세요.</p>
+</blockquote>
+
+<h1 id="튜토리얼">튜토리얼</h1>
+
+<h2 id="목적">목적</h2>
+
+<p>이 튜토리얼은 redux-saga 를 가능한 쉬운 방법으로 소개할것입니다.
+<!--This tutorial attempts to introduce redux-saga in a (hopefully) accessible way.--></p>
+
+<p>튜토리얼을 위해서, 우리는 Redux 저장소에 있는 간단한 카운터 예시를 사용할겁니다.
+이 카운터 애플리케이션은 아주 간단하면서, 과도하게 빠지지 않고 redux-sage 의 기본 컨셉들을 설명 하기에 딱입니다.
+<!--For our getting started tutorial, we are going to use the trivial Counter demo from the Redux repo. The application is quite simple but is a good fit to illustrate the basic concepts of redux-saga without being lost in excessive details.--></p>
+
+<h3 id="초기-설정">초기 설정</h3>
+
+<p>시작하기 전에, <a href="https://github.com/redux-saga/redux-saga-beginner-tutorial">튜토리얼 저장소</a> 를 클론 하세요.
+<!--Before we start, clone the [tutorial repository](https://github.com/redux-saga/redux-saga-beginner-tutorial).--></p>
+
+<blockquote>
+  <p>이 튜토리얼의 코드들은 <code class="highlighter-rouge">sagas</code> 브랜치에 있습니다.</p>
+</blockquote>
+
+<!--The final code of this tutorial is located in the `sagas` branch.-->
+
+<p>커맨드 라인에서 다음 명령어를 실행하세요:
+<!--Then in the command line, run:--></p>
+
+<div class="language-sh highlighter-rouge"><pre class="highlight"><code><span class="gp">$ </span><span class="nb">cd </span>redux-saga-beginner-tutorial
+<span class="gp">$ </span>npm install
+</code></pre>
+</div>
+
+<p>애플리케이션을 시작하기 위해서는 다음 명령어를 실행하시면 됩니다:
+<!--To start the application, run:--></p>
+
+<div class="language-sh highlighter-rouge"><pre class="highlight"><code><span class="gp">$ </span>npm start
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">증가</code> 와 <code class="highlighter-rouge">감소</code> 버튼이 있는 카운터로 아주 간단하게 시작하고, 그후 비동기 호출에 대해서 설명하겠습니다
+<!--We are starting with the simplest use case: 2 buttons to `Increment` and `Decrement` a counter. Later, we will introduce asynchronous calls.--></p>
+
+<p>이상이 없다면, 당신은 <code class="highlighter-rouge">증가</code> 와 <code class="highlighter-rouge">감소</code> 버튼과 <code class="highlighter-rouge">Counter: 0</code> 이라는 메세지를 볼 수 있을것 입니다.
+<!--If things go well, you should see 2 buttons `Increment` and `Decrement` along with a message below showing `Counter: 0`.--></p>
+
+<blockquote>
+  <p>만약 이 단계에서 어려움을 겪고계시다면, 고민하지 마시고 <a href="https://github.com/redux-saga/redux-saga-beginner-tutorial/issues">튜토리얼 저장소</a> 에 에슈를 만들어주세요.</p>
+</blockquote>
+
+<!-- > In case you encountered an issue with running the application. Feel free to create an issue on the [tutorial repo](https://github.com/redux-saga/redux-saga-beginner-tutorial/issues).-->
+
+<h2 id="hello-sagas">Hello Sagas!</h2>
+
+<p>첫번째 Saga 를 만들어봅시다! 전통을 따라, Saga 버전 ‘Hello, world’ 를 작성해 봅시다.
+<!--We are going to create our first Saga. Following the tradition, we will write our 'Hello, world' version for Sagas.--></p>
+
+<p><code class="highlighter-rouge">sagas.js</code> 파일을 만드신 후 다음 내용을 적으세요.
+<!--Create a file `sagas.js` then add the following snippet:--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kr">export</span> <span class="kd">function</span><span class="o">*</span> <span class="nx">helloSaga</span><span class="p">()</span> <span class="p">{</span>
+  <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s1">'Hello Sagas!'</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<p>무서운것이 없습니다, 이건 그냥 평범한 함수일 뿐이에요. (<code class="highlighter-rouge">*</code>를 제외하면요). 이것이 하는일은 콘솔에 환영 메세지를 적는것밖에 없습니다.
+<!--So nothing scary, just a normal function (except for the `*`). All it does is print a greeting message into the console.--></p>
+
+<p>우리의 Saga 를 실행하기 위해서, 몇가지 할 일이 있습니다.
+<!--In order to run our Saga, we need to:--></p>
+
+<ul>
+  <li>Sagas 리스트와 함께 Saga 미들웨어를 만드세요. (지금까진 <code class="highlighter-rouge">helloSaga</code> 오직 하나입니다)</li>
+  <li>Saga 미들웨어를 Redux 스토어에 연결하세요.</li>
+</ul>
+
+<!--- create a Saga middleware with a list of Sagas to run (so far we have only one `helloSaga`)-->
+<!--- connect the Saga middleware to the Redux store-->
+
+<p>이제 <code class="highlighter-rouge">main.js</code> 를 작성해봅시다:
+<!--We will make the changes to `main.js`:--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="c1">// ...</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">createStore</span><span class="p">,</span> <span class="nx">applyMiddleware</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'redux'</span>
+<span class="kr">import</span> <span class="nx">createSagaMiddleware</span> <span class="nx">from</span> <span class="s1">'redux-saga'</span>
+
+<span class="c1">// ...</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">helloSaga</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'./sagas'</span>
+
+<span class="kr">const</span> <span class="nx">sagaMiddleware</span> <span class="o">=</span> <span class="nx">createSagaMiddleware</span><span class="p">()</span>
+<span class="kr">const</span> <span class="nx">store</span> <span class="o">=</span> <span class="nx">createStore</span><span class="p">(</span>
+  <span class="nx">reducer</span><span class="p">,</span>
+  <span class="nx">applyMiddleware</span><span class="p">(</span><span class="nx">sagaMiddleware</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="nx">sagaMiddleware</span><span class="p">.</span><span class="nx">run</span><span class="p">(</span><span class="nx">helloSaga</span><span class="p">)</span>
+
+<span class="kr">const</span> <span class="nx">action</span> <span class="o">=</span> <span class="nx">type</span> <span class="o">=&gt;</span> <span class="nx">store</span><span class="p">.</span><span class="nx">dispatch</span><span class="p">({</span><span class="nx">type</span><span class="p">})</span>
+
+<span class="c1">// rest unchanged</span>
+</code></pre>
+</div>
+
+<p>처음에, <code class="highlighter-rouge">./sagas</code> 모듈에서 가져온 우리의 Saga 를 임포트 합니다. 그리고 나서 <code class="highlighter-rouge">redux-saga</code> 라이브러리에서 가져온 <code class="highlighter-rouge">createSagaMiddleware</code> 팩토리 함수를 사용해서 미들웨어를 만들었죠.
+<!--First we import our Saga from the `./sagas` module. Then we create a middleware using the factory function `createSagaMiddleware` exported by the `redux-saga` library.--></p>
+
+<p><code class="highlighter-rouge">helloSaga</code> 를 실행하기 전에, 반드시 <code class="highlighter-rouge">applyMiddleware</code> 를 사용해서 미들웨어를 연결해야 <code class="highlighter-rouge">sagaMiddleware.run(helloSaga)</code> 를 통해 Saga 를 시작할 수 있습니다.. 
+<!--Before running our `helloSaga`, we must connect our middleware to the Store using `applyMiddleware`. Then we can use the `sagaMiddleware.run(helloSaga)` to start our Saga.--></p>
+
+<p>지금까지 우리의 Saga 는 특별하지 않습니다. 이건 단지 로그 메세지만을 남기고 종료될 뿐입니다.
+<!--So far, our Saga does nothing special. It just logs a message then exits.--></p>
+
+<h2 id="비동기-호출">비동기 호출</h2>
+
+<p>이제, 오리지널 카운터 데모 가까이 무언가를 추가해봅시다. 비동기 호출을 설명하기 위해 클릭 1초 후 증가되는 또다른 버튼을 추가할겁니다.
+<!--Now let's add something closer to the original Counter demo. To illustrate asynchronous calls, we will add another button to increment the counter 1 second after the click.--></p>
+
+<p>먼저, UI 컴포넌트에 <code class="highlighter-rouge">onIncrementAsync</code> 라는 콜백을 넣을겁니다.
+<!--First thing's first, we'll provide an additional callback `onIncrementAsync` to the UI component.--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kr">const</span> <span class="nx">Counter</span> <span class="o">=</span> <span class="p">({</span> <span class="nx">value</span><span class="p">,</span> <span class="nx">onIncrement</span><span class="p">,</span> <span class="nx">onDecrement</span><span class="p">,</span> <span class="nx">onIncrementAsync</span> <span class="p">})</span> <span class="o">=&gt;</span>
+  <span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span>
+    <span class="p">{</span><span class="s1">' '</span><span class="p">}</span>
+    <span class="o">&lt;</span><span class="nx">button</span> <span class="nx">onClick</span><span class="o">=</span><span class="p">{</span><span class="nx">onIncrementAsync</span><span class="p">}</span><span class="o">&gt;</span>
+      <span class="nx">Increment</span> <span class="nx">after</span> <span class="mi">1</span> <span class="nx">second</span>
+    <span class="o">&lt;</span><span class="sr">/button</span><span class="err">&gt;
+</span>    <span class="o">&lt;</span><span class="nx">hr</span> <span class="o">/&gt;</span>
+    <span class="o">&lt;</span><span class="nx">div</span><span class="o">&gt;</span>
+      <span class="nx">Clicked</span><span class="err">:</span> <span class="p">{</span><span class="nx">value</span><span class="p">}</span> <span class="nx">times</span>
+    <span class="o">&lt;</span><span class="sr">/div</span><span class="err">&gt;
+</span>  <span class="o">&lt;</span><span class="sr">/div</span><span class="err">&gt;
+</span></code></pre>
+</div>
+
+<p>다음으로, <code class="highlighter-rouge">onIncrementAsync</code> 를 스토어 액션에 연결해야 합니다.
+<!--Next we should connect the `onIncrementAsync` of the Component to a Store action.--></p>
+
+<p><code class="highlighter-rouge">main.js</code> 모듈을 다음과 같이 수정하겠습니다.
+<!--We will modify the `main.js` module as follows--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kd">function</span> <span class="nx">render</span><span class="p">()</span> <span class="p">{</span>
+  <span class="nx">ReactDOM</span><span class="p">.</span><span class="nx">render</span><span class="p">(</span>
+    <span class="o">&lt;</span><span class="nx">Counter</span>
+      <span class="nx">value</span><span class="o">=</span><span class="p">{</span><span class="nx">store</span><span class="p">.</span><span class="nx">getState</span><span class="p">()}</span>
+      <span class="nx">onIncrement</span><span class="o">=</span><span class="p">{()</span> <span class="o">=&gt;</span> <span class="nx">action</span><span class="p">(</span><span class="s1">'INCREMENT'</span><span class="p">)}</span>
+      <span class="nx">onDecrement</span><span class="o">=</span><span class="p">{()</span> <span class="o">=&gt;</span> <span class="nx">action</span><span class="p">(</span><span class="s1">'DECREMENT'</span><span class="p">)}</span> 
+      <span class="nx">onIncrementAsync</span><span class="o">=</span><span class="p">{()</span> <span class="o">=&gt;</span> <span class="nx">action</span><span class="p">(</span><span class="s1">'INCREMENT_ASYNC'</span><span class="p">)}</span> <span class="sr">/&gt;</span><span class="err">,
+</span>    <span class="nb">document</span><span class="p">.</span><span class="nx">getElementById</span><span class="p">(</span><span class="s1">'root'</span><span class="p">)</span>
+  <span class="p">)</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+<p>명심하세요, redux-thunk 와는 달리 우리의 컴포넌트는 순수 액션 오브젝트만 dispatch 할겁니다.
+<!--Note that unlike in redux-thunk, our component dispatches a plain object action.--></p>
+
+<p>이제 비동기 호출을 구현하기 위해 또다른 Saga 를 소개해볼까 합니다. 
+<!--Now we will introduce another Saga to perform the asynchronous call. Our use case is as follows:--></p>
+
+<blockquote>
+  <p>각각의 <code class="highlighter-rouge">INCREMENT_ASYNC</code> 액션에서, 우리는 다음과 같은 작업을 수행할 태스크를 시작하고자 합니다.</p>
+</blockquote>
+
+<!--> On each `INCREMENT_ASYNC` action, we want to start a task that will do the following-->
+
+<blockquote>
+  <ul>
+    <li>1 초를 기다린 후 카운터 증가</li>
+  </ul>
+</blockquote>
+
+<!-- > - Wait 1 second then increment the counter-->
+
+<p>다음 코드를 <code class="highlighter-rouge">sagas.js</code> 모듈에 추가하세요.
+<!--Add the following code to the `sagas.js` module:--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kr">import</span> <span class="p">{</span> <span class="nx">delay</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'redux-saga'</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">put</span><span class="p">,</span> <span class="nx">takeEvery</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'redux-saga/effects'</span>
+
+<span class="c1">// worker Saga: 비동기 증가 태스크를 수행할겁니다.</span>
+<span class="kr">export</span> <span class="kd">function</span><span class="o">*</span> <span class="nx">incrementAsync</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">yield</span> <span class="nx">delay</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+  <span class="k">yield</span> <span class="nx">put</span><span class="p">({</span> <span class="na">type</span><span class="p">:</span> <span class="s1">'INCREMENT'</span> <span class="p">})</span>
+<span class="p">}</span>
+
+<span class="c1">// watcher Saga: 각각의 INCREMENT_ASYNC 에 incrementAsync 태스크를 생성할겁니다.</span>
+<span class="kr">export</span> <span class="kd">function</span><span class="o">*</span> <span class="nx">watchIncrementAsync</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">yield</span> <span class="nx">takeEvery</span><span class="p">(</span><span class="s1">'INCREMENT_ASYNC'</span><span class="p">,</span> <span class="nx">incrementAsync</span><span class="p">)</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<p>설명할 때가 왔군요.
+<!--Time for some explanations.--></p>
+
+<p><code class="highlighter-rouge">delay</code> 라는 유틸리티 함수를 임포트 했는데요, 이 함수는 설정된 시간 이후에 resolve 를 하는 <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise">Promise</a> 객체를 리턴합니다. 우리는 이 함수를 제너레이터를 <em>정지</em> 하는데 사용할겁니다.</p>
+
+<!--We import `delay`, a utility function that returns a [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise) that will resolve after a specified number of milliseconds. We'll use this function to *block* the Generator.-->
+
+<p>Sagas 는 오브젝트들을 redux-saga 미들웨어에 <em>yield</em> 하는 <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*">제너레이터 함수</a> 로 구현되었습니다. <em>yield된</em> 오브젝트들은 미들웨어에 의해 해석되는 명령의 한 종류입니다. Promise 가 미들웨어에 yield 될 때, 미들웨어는 Promise 가 끝날때 까지 Saga 를 일시정지 시킬것 입니다. 위의 예시에서, <code class="highlighter-rouge">incrementAsync</code> Saga 는 1초 후에 일어날 <code class="highlighter-rouge">delay</code>의 resolve 에 의해 Promise 가 리턴될때 까지 정지되어있을겁니다.</p>
+
+<!--Sagas are implemented as [Generator functions](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*) that *yield* objects to the redux-saga middleware. The yielded objects are a kind of instruction to be interpreted by the middleware. When a Promise is yielded to the middleware, the middleware will suspend the Saga until the Promise completes. In the above example, the `incrementAsync` Saga is suspended until the Promise returned by `delay` resolves, which will happen after 1 second.-->
+
+<p>Promise 가 한번 resolve 되고 나면, 미들웨어는 Saga 를 다시 작동시키면서, 다음 yield 까지 코드를 실행합니다. 이 예제에서 다음 상태는 미들웨어에게 <code class="highlighter-rouge">INCREMENT</code> 액션을 dispach 하게 알려주는  <code class="highlighter-rouge">put({type: 'INCREMENT'})</code> 의 결과 객체가 됩니다.</p>
+
+<!--Once the Promise is resolved, the middleware will resume the Saga, executing code until the next yield. In this example, the next statement is another yielded object: the result of calling `put({type: 'INCREMENT'})`, which instructs the middleware to dispatch an `INCREMENT` action.-->
+
+<p><code class="highlighter-rouge">put</code> 은 우리가 <em>이펙트</em> 라고 부르는 예중 하나입니다. 이펙트는 미들웨어에 의해 수행되는 명령을 담고있는 간단한 자바스크립트 객체입니다. 미들웨어가 Saga 에 의해 yield 된 이펙트를 받을때, Saga 는 이펙트가 수행될때까지 정지되어 있을겁니다.</p>
+
+<!--`put` is one example of what we call an *Effect*. Effects are simple JavaScript objects which contain instructions to be fulfilled by the middleware. When a middleware retrieves an Effect yielded by a Saga, the Saga is paused until the Effect is fulfilled.-->
+
+<p>정리하자면, <code class="highlighter-rouge">incrementAsync</code> Saga 는 <code class="highlighter-rouge">delay(1000)</code> 호출에 의해 1초동안 자고있다가, <code class="highlighter-rouge">INCREMENT</code> 액션을 dispatch 하게 되는것이죠.
+<!--So to summarize, the `incrementAsync` Saga sleeps for 1 second via the call to `delay(1000)`, then dispatches an `INCREMENT` action.--></p>
+
+<p>다음으로, 우리는 <code class="highlighter-rouge">watchIncrementAsync</code> 라는 또다른 Saga를 만들었습니다. dispatch된 <code class="highlighter-rouge">INCREMENT_ASYNC</code> 액션을 바라보고, 매번 <code class="highlighter-rouge">incrementAsync</code> 를 실행하기 위해 <code class="highlighter-rouge">redux-saga</code> 패키지가 제공하는 <code class="highlighter-rouge">takeEvery</code> 헬퍼 함수를 사용했습니다.
+<!--Next, we created another Saga `watchIncrementAsync`. We use `takeEvery`, a helper function provided by `redux-saga`, to listen for dispatched `INCREMENT_ASYNC` actions and run `incrementAsync` each time.--></p>
+
+<p>이제 두개의 Saga가 있네요, 이제 두 Saga 모두 한번에 실행해야할 필요가 생겼습니다, 이 작업을 하려면, 다른 Saga들을 시작해야할 책임이 있는 <code class="highlighter-rouge">rootSaga</code> 를 추가해봅시다.</p>
+
+<p>자 이제 여기 코드들을 <code class="highlighter-rouge">sagas.js</code> 에 추가해보세요.</p>
+
+<!--Now we have 2 Sagas, and we need to start them both at once. To do that, we'll add a `rootSaga` that is responsible for starting our other Sagas. In the same file `sagas.js`, add the following code:-->
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="c1">// 모든 Saga들을 한번에 시작하기 위한 하나의 지점입니다.</span>
+<span class="kr">export</span> <span class="k">default</span> <span class="kd">function</span><span class="o">*</span> <span class="nx">rootSaga</span><span class="p">()</span> <span class="p">{</span>
+  <span class="k">yield</span> <span class="p">[</span>
+    <span class="nx">incrementAsync</span><span class="p">(),</span>
+    <span class="nx">watchIncrementAsync</span><span class="p">()</span>
+  <span class="p">]</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<p>이 Saga는 <code class="highlighter-rouge">helloSaga</code> Saga 와 <code class="highlighter-rouge">watchIncrementAsync</code> Saga 가 호출된 결과의 배열을 yield 합니다. 이것은 생선된 두 제너레이터가 병렬로 시작된다는것을 의미하죠. 이제 <code class="highlighter-rouge">sagaMiddleware.run</code> 를 <code class="highlighter-rouge">main.js</code> 의 root Saga에 주입할 일만 남았습니다.</p>
+
+<!--This Saga yields an array with the results of calling our two sagas, `helloSaga` and `watchIncrementAsync`. This means the two resulting Generators will be started in parallel. Now we only have to invoke `sagaMiddleware.run` on the root Saga in `main.js`.-->
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="c1">// ...</span>
+<span class="kr">import</span> <span class="nx">rootSaga</span> <span class="nx">from</span> <span class="s1">'./sagas'</span>
+
+<span class="kr">const</span> <span class="nx">sagaMiddleware</span> <span class="o">=</span> <span class="nx">createSagaMiddleware</span><span class="p">()</span>
+<span class="kr">const</span> <span class="nx">store</span> <span class="o">=</span> <span class="p">...</span>
+<span class="nx">sagaMiddleware</span><span class="p">.</span><span class="nx">run</span><span class="p">(</span><span class="nx">rootSaga</span><span class="p">)</span>
+
+<span class="c1">// ...</span>
+</code></pre>
+</div>
+
+<h2 id="테스트">테스트</h2>
+
+<p>이제 우리의 <code class="highlighter-rouge">incrementAsync</code> Saga 가 바람직한 태스크를 수행하는지 확실하게 해야겠죠? 테스트를 만들어 봅시다.
+<!--We want to test our `incrementAsync` Saga to make sure it performs the desired task.--></p>
+
+<p><code class="highlighter-rouge">sagas.spec.js</code> 파일을 만듭시다.
+<!--Create another file `sagas.spec.js`:--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kr">import</span> <span class="nx">test</span> <span class="nx">from</span> <span class="s1">'tape'</span><span class="p">;</span>
+
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">incrementAsync</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'./sagas'</span>
+
+<span class="nx">test</span><span class="p">(</span><span class="s1">'incrementAsync Saga test'</span><span class="p">,</span> <span class="p">(</span><span class="nx">assert</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">gen</span> <span class="o">=</span> <span class="nx">incrementAsync</span><span class="p">()</span>
+
+  <span class="c1">// now what ?</span>
+<span class="p">});</span>
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">incrementAsync</code> 는 제너레이터 함수입니다. 이것을 실행하면, 이터레이터 오브젝트를 반환하고, 이터레이터의 <code class="highlighter-rouge">next</code> 메소드는 다음과 같은 모양을 가진 객체를 돌려줍니다. 
+<!--`incrementAsync` is a generator function. When run, it returns an iterator object, and the iterator's `next` method returns an object with the following shape--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="nx">gen</span><span class="p">.</span><span class="nx">next</span><span class="p">()</span> <span class="c1">// =&gt; { done: boolean, value: any }</span>
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">value</code> 필드는 yield 된 표현식을 포함합니다. <code class="highlighter-rouge">yield</code> 다음 표현식의 결과 같은 것 말이죠.
+<code class="highlighter-rouge">done</code> 필드는 아직 <code class="highlighter-rouge">yield</code> 표현이 남아있는지, 아니면 제너레이터가 종료되었는지 가리킵니다.
+<!--The `value` field contains the yielded expression, i.e. the result of the expression after
+the `yield`. The `done` field indicates if the generator has terminated or if there are still
+more 'yield' expressions.--></p>
+
+<p><code class="highlighter-rouge">incrementAsync</code> 로 예를 들자면, 제너레이터는 두개의 값을 연속으로 yield 합니다.
+<!--In the case of `incrementAsync`, the generator yields 2 values consecutively:--></p>
+
+<ol>
+  <li><code class="highlighter-rouge">yield delay(1000)</code></li>
+  <li><code class="highlighter-rouge">yield put({type: 'INCREMENT'})</code></li>
+</ol>
+
+<p>그래서 우리가 제너레이터의 next 메소드를 세번 연속하여 부른다면, 다음과 같은 결과값을 얻게 됩니다.
+<!--So if we invoke the next method of the generator 3 times consecutively we get the following
+results:--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="nx">gen</span><span class="p">.</span><span class="nx">next</span><span class="p">()</span> <span class="c1">// =&gt; { done: false, value: &lt;result of calling delay(1000)&gt; }</span>
+<span class="nx">gen</span><span class="p">.</span><span class="nx">next</span><span class="p">()</span> <span class="c1">// =&gt; { done: false, value: &lt;result of calling put({type: 'INCREMENT'})&gt; }</span>
+<span class="nx">gen</span><span class="p">.</span><span class="nx">next</span><span class="p">()</span> <span class="c1">// =&gt; { done: true, value: undefined }</span>
+</code></pre>
+</div>
+
+<p>처음 두개 호출은 yield 표현의 결과를 돌려줍니다. 3번째 호출은 더이상 yield 가 없기 때문에 <code class="highlighter-rouge">done</code> 필드는 true 로 설정되고, <code class="highlighter-rouge">incrementAsync</code> 제너레이터가 아무것도 리턴하지 않기 때문에 <code class="highlighter-rouge">value</code> 필드는 <code class="highlighter-rouge">undefined</code> 로 설정됩니다.
+<!--The first 2 invocations return the results of the yield expressions. On the 3rd invocation
+since there is no more yield the `done` field is set to true. And since the `incrementAsync`
+Generator doesn't return anything (no `return` statement), the `value` field is set to
+`undefined`.--></p>
+
+<p>자 이제, <code class="highlighter-rouge">incrementAsync</code> 안에서 로직을 테스트하기 위해, 돌려받은 제너레이터를 반복하고, 제너레이터에 의해 yield 된 값들을 간단히 체크할겁니다.
+<!--So now, in order to test the logic inside `incrementAsync`, we'll simply have to iterate
+over the returned Generator and check the values yielded by the generator.--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kr">import</span> <span class="nx">test</span> <span class="nx">from</span> <span class="s1">'tape'</span><span class="p">;</span>
+
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">incrementAsync</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'./sagas'</span>
+
+<span class="nx">test</span><span class="p">(</span><span class="s1">'incrementAsync Saga test'</span><span class="p">,</span> <span class="p">(</span><span class="nx">assert</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">gen</span> <span class="o">=</span> <span class="nx">incrementAsync</span><span class="p">()</span>
+
+  <span class="nx">assert</span><span class="p">.</span><span class="nx">deepEqual</span><span class="p">(</span>
+    <span class="nx">gen</span><span class="p">.</span><span class="nx">next</span><span class="p">(),</span>
+    <span class="p">{</span> <span class="na">done</span><span class="p">:</span> <span class="kc">false</span><span class="p">,</span> <span class="na">value</span><span class="p">:</span> <span class="p">???</span> <span class="p">},</span>
+    <span class="s1">'incrementAsync should return a Promise that will resolve after 1 second'</span>
+  <span class="p">)</span>
+<span class="p">});</span>
+</code></pre>
+</div>
+
+<p>하지만 Promise 에선 비교연산을 할 수 없는데 어떻게 <code class="highlighter-rouge">delay</code> 의 리턴값을 테스트 하죠?  만약 <code class="highlighter-rouge">delay</code> 가 <em>평범한</em> 값을 돌려준다면 테스트하기 쉬울텐데요..
+<!--The issue is how do we test the return value of `delay`? We can't do a simple equality test
+on Promises. If `delay` returned a *normal* value, things would've been easier to test.--></p>
+
+<p><code class="highlighter-rouge">redux-saga</code> 는 위의 고민을 해결할 방법을 제시하고 있습니다. <code class="highlighter-rouge">incrementAsync</code> 에서 <code class="highlighter-rouge">delay(1000)</code> 을 직접적으로 호출하는것 대신, 우린 <em>간접적으로</em> 호출할겁니다.
+<!--Well, `redux-saga` provides a way to make the above statement possible. Instead of calling
+`delay(1000)` directly inside `incrementAsync`, we'll call it *indirectly*:--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="c1">// ...</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">delay</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'redux-saga'</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">put</span><span class="p">,</span> <span class="nx">call</span><span class="p">,</span> <span class="nx">takeEvery</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'redux-saga/effects'</span>
+
+<span class="kr">export</span> <span class="kd">function</span><span class="o">*</span> <span class="nx">incrementAsync</span><span class="p">()</span> <span class="p">{</span>
+  <span class="c1">// use the call Effect</span>
+  <span class="k">yield</span> <span class="nx">call</span><span class="p">(</span><span class="nx">delay</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+  <span class="k">yield</span> <span class="nx">put</span><span class="p">({</span> <span class="na">type</span><span class="p">:</span> <span class="s1">'INCREMENT'</span> <span class="p">})</span>
+<span class="p">}</span>
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">yield delay(1000)</code> 대신 <code class="highlighter-rouge">yield call(delay, 1000)</code> 를 하고있습니다, 무엇이 달라졌는지 보이시나요?
+<!--Instead of doing `yield delay(1000)`, we're now doing `yield call(delay, 1000)`. What's the difference?--></p>
+
+<p>첫번째 경우에서, <code class="highlighter-rouge">delay(1000)</code> yield 구문은 <code class="highlighter-rouge">next</code> 의 호출자로 넘겨지기 전에 실행되고, (여기서 호출자는 미들웨어가 되거나, 제너레이터 함수를 실행하고 리턴된 제너레이터를 넘어 반복하는 테스트코드가 되어야 합니다.)  호출자가 얻게 되는것은 Promise 입니다. 아래 코드를 참고하세요.</p>
+
+<!--In the first case, the yield expression `delay(1000)` is evaluated before it gets passed to the caller of `next` (the caller could be the middleware when running our code. It could also be our test code which runs the Generator function and iterates over the returned Generator). So what the caller gets is a Promise, like in the test code above.-->
+
+<p>두번째 경우에선, <code class="highlighter-rouge">call(delay, 1000)</code> yield 구문은 <code class="highlighter-rouge">next</code> 의 호출자에게 넘겨지게 됩니다. <code class="highlighter-rouge">put</code> 과 유사한 <code class="highlighter-rouge">call</code> 은 미들웨어에게 주어진 함수와 인자들을 실행하라는 명령을 하는 이펙트를 리턴합니다.
+사실, <code class="highlighter-rouge">put</code> 과 <code class="highlighter-rouge">call</code> 은 스스로 어떤 dispatch 나 비동기적인 호출을 하지 않습니다. 그들은 단지 순수한 자바스크립트 객체를 돌려줄 뿐입니다.</p>
+
+<!--In the second case, the yield expression `call(delay, 1000)` is what gets passed to the caller of `next`. `call` just like `put`, returns an Effect which instructs the middleware to call a given function with the given arguments. In fact, neither `put` nor `call` performs any dispatch or asynchronous call by themselves, they simply return plain JavaScript objects.-->
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="nx">put</span><span class="p">({</span><span class="na">type</span><span class="p">:</span> <span class="s1">'INCREMENT'</span><span class="p">})</span> <span class="c1">// =&gt; { PUT: {type: 'INCREMENT'} }</span>
+<span class="nx">call</span><span class="p">(</span><span class="nx">delay</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>        <span class="c1">// =&gt; { CALL: {fn: delay, args: [1000]}}</span>
+</code></pre>
+</div>
+
+<p>무슨일이 일어날까요? 미들웨어는 각각의 yield 된 이펙트들을 검사한뒤, 어떻게 이펙트를 수행할지 결정합니다. 만약 이펙트의 타입이 <code class="highlighter-rouge">PUT</code> 이라면, 미들웨어는 스토어에 액션을 dispatch 할것입니다. <code class="highlighter-rouge">CALL</code> 인 경우엔 주어진 함수를 실행하게 되는것 이고요.</p>
+
+<!--What happens is that the middleware examines the type of each yielded Effect then decides how to fulfill that Effect. If the Effect type is a `PUT` then it will dispatch an action to the Store. If the Effect is a `CALL` then it'll call the given function.-->
+
+<p>이 이펙트생성과 이펙트 실행의 분리는 제너레이터를 놀랍게도 쉽게 테스트가 가능하도록 만듭니다.
+<!--This separation between Effect creation and Effect execution makes it possible to test our Generator in a surprisingly easy way:--></p>
+
+<div class="language-javascript highlighter-rouge"><pre class="highlight"><code><span class="kr">import</span> <span class="nx">test</span> <span class="nx">from</span> <span class="s1">'tape'</span><span class="p">;</span>
+
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">put</span><span class="p">,</span> <span class="nx">call</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'redux-saga/effects'</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">delay</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'redux-saga'</span>
+<span class="kr">import</span> <span class="p">{</span> <span class="nx">incrementAsync</span> <span class="p">}</span> <span class="nx">from</span> <span class="s1">'./sagas'</span>
+
+<span class="nx">test</span><span class="p">(</span><span class="s1">'incrementAsync Saga test'</span><span class="p">,</span> <span class="p">(</span><span class="nx">assert</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
+  <span class="kr">const</span> <span class="nx">gen</span> <span class="o">=</span> <span class="nx">incrementAsync</span><span class="p">()</span>
+
+  <span class="nx">assert</span><span class="p">.</span><span class="nx">deepEqual</span><span class="p">(</span>
+    <span class="nx">gen</span><span class="p">.</span><span class="nx">next</span><span class="p">().</span><span class="nx">value</span><span class="p">,</span>
+    <span class="nx">call</span><span class="p">(</span><span class="nx">delay</span><span class="p">,</span> <span class="mi">1000</span><span class="p">),</span>
+    <span class="s1">'incrementAsync Saga must call delay(1000)'</span>
+  <span class="p">)</span>
+
+  <span class="nx">assert</span><span class="p">.</span><span class="nx">deepEqual</span><span class="p">(</span>
+    <span class="nx">gen</span><span class="p">.</span><span class="nx">next</span><span class="p">().</span><span class="nx">value</span><span class="p">,</span>
+    <span class="nx">put</span><span class="p">({</span><span class="na">type</span><span class="p">:</span> <span class="s1">'INCREMENT'</span><span class="p">}),</span>
+    <span class="s1">'incrementAsync Saga must dispatch an INCREMENT action'</span>
+  <span class="p">)</span>
+
+  <span class="nx">assert</span><span class="p">.</span><span class="nx">deepEqual</span><span class="p">(</span>
+    <span class="nx">gen</span><span class="p">.</span><span class="nx">next</span><span class="p">(),</span>
+    <span class="p">{</span> <span class="na">done</span><span class="p">:</span> <span class="kc">true</span><span class="p">,</span> <span class="na">value</span><span class="p">:</span> <span class="kc">undefined</span> <span class="p">},</span>
+    <span class="s1">'incrementAsync Saga must be done'</span>
+  <span class="p">)</span>
+
+  <span class="nx">assert</span><span class="p">.</span><span class="nx">end</span><span class="p">()</span>
+<span class="p">});</span>
+</code></pre>
+</div>
+
+<p><code class="highlighter-rouge">put</code> 과 <code class="highlighter-rouge">call</code> 이 순수 객체를 반환하기 때문에, 테스트 코드에서 같은 함수들을 재사용할수 있게 되었고, <code class="highlighter-rouge">incrementAsync</code> 의 로직을 테스트 하기 위해 단순히 제너레이터를 반복하고 값에 대해 <code class="highlighter-rouge">deepEqual</code> 테스트를 할수 있게 되었습니다.</p>
+
+<!--Since `put` and `call` return plain objects, we can reuse the same functions in our test code. And to test the logic of `incrementAsync`, we simply iterate over the generator and do `deepEqual` tests on its values.-->
+
+<p>위의 테스트를 진행하기 위한 코드입니다:
+<!--In order to run the above test, run:--></p>
+
+<div class="language-sh highlighter-rouge"><pre class="highlight"><code><span class="gp">$ </span>npm <span class="nb">test</span>
+</code></pre>
+</div>
+
+<p>이 테스트는 콘솔에 결과를 보고해야 합니다.
+<!--which should report the results on the console.--></p>
+
+<blockquote>
+  <p>이 글은 <a href="https://redux-saga.js.org/">공식문서 의 Beginner tutorial</a> 을 한국어로 번역한 글입니다.</p>
+
+  <p>전체 문서는 <a href="https://mskims.github.io/redux-saga-in-korean/">한국어 번역 문서</a> 를 참조해주세요.</p>
+</blockquote>
+
+          </div>
+
+          <div class="article-share">
+            
+            <a href="" title="Share on Twitter" onclick="window.open('https://twitter.com/home?status=[번역] redux-saga 튜토리얼 - /posts/redux-saga ', 'newwindow', 'width=500, height=225'); return false;" data-turbolinks="false">
+              <svg enable-background="new 0 0 128 128" width="15px" version="1.1" viewBox="0 0 128 128" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="_x37__stroke"><g id="Twitter"><rect clip-rule="evenodd" fill="none" fill-rule="evenodd" height="128" width="128"/><path clip-rule="evenodd" d="M128,23.294    c-4.703,2.142-9.767,3.59-15.079,4.237c5.424-3.328,9.587-8.606,11.548-14.892c-5.079,3.082-10.691,5.324-16.687,6.526    c-4.778-5.231-11.608-8.498-19.166-8.498c-14.493,0-26.251,12.057-26.251,26.927c0,2.111,0.225,4.16,0.676,6.133    C41.217,42.601,21.871,31.892,8.91,15.582c-2.261,3.991-3.554,8.621-3.554,13.552c0,9.338,4.636,17.581,11.683,22.412    c-4.297-0.131-8.355-1.356-11.901-3.359v0.331c0,13.051,9.053,23.937,21.074,26.403c-2.201,0.632-4.523,0.948-6.92,0.948    c-1.69,0-3.343-0.162-4.944-0.478c3.343,10.694,13.035,18.483,24.53,18.691c-8.986,7.227-20.315,11.533-32.614,11.533    c-2.119,0-4.215-0.123-6.266-0.37c11.623,7.627,25.432,12.088,40.255,12.088c48.309,0,74.717-41.026,74.717-76.612    c0-1.171-0.023-2.342-0.068-3.49C120.036,33.433,124.491,28.695,128,23.294" fill-rule="evenodd" id="Twitter_1_"/></g></g></svg>
+            </a>
+            <a href="" title="Share on Facebook" onclick="window.open('https://www.facebook.com/sharer/sharer.php?u=/posts/redux-saga', 'newwindow', 'width=500, height=500'); return false;" data-turbolinks="false">
+              <svg enable-background="new 0 0 128 128" width="15px" version="1.1" viewBox="0 0 128 128" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="_x31__stroke"><g id="Facebook_1_"><rect fill="none" height="128" width="128"/><path clip-rule="evenodd" d="M68.369,128H7.065C3.162,128,0,124.836,0,120.935    V7.065C0,3.162,3.162,0,7.065,0h113.871C124.837,0,128,3.162,128,7.065v113.87c0,3.902-3.163,7.065-7.064,7.065H88.318V78.431    h16.638l2.491-19.318H88.318V46.78c0-5.593,1.553-9.404,9.573-9.404l10.229-0.004V20.094c-1.769-0.235-7.841-0.761-14.906-0.761    c-14.749,0-24.846,9.003-24.846,25.535v14.246H51.688v19.318h16.681V128z" fill-rule="evenodd" id="Facebook"/></g></g></svg>
+            </a>
+            <a href="" title="Share on Google+" onclick="window.open('https://plus.google.com/share?url=/posts/redux-saga', 'newwindow', 'width=550, height=400'); return false;" data-turbolinks="false">
+              <svg enable-background="new 0 0 128 128" version="1.1" viewBox="0 0 128 128" width="20px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><g id="_x35__stroke"><g id="Google_Plus"><rect clip-rule="evenodd" fill="none" fill-rule="evenodd" height="128" width="128"/><path clip-rule="evenodd" d="M40.654,55.935v16.13    c0,0,15.619-0.021,21.979-0.021C59.189,82.5,53.834,88.194,40.654,88.194c-13.338,0-23.748-10.832-23.748-24.194    s10.41-24.194,23.748-24.194c7.052,0,11.607,2.483,15.784,5.944c3.344-3.35,3.065-3.828,11.573-11.877    c-7.222-6.586-16.822-10.6-27.357-10.6C18.201,23.273,0,41.507,0,64c0,22.493,18.201,40.727,40.654,40.727    c33.561,0,41.763-29.275,39.044-48.792H40.654z M113.912,56.742V42.628h-10.063v14.113H89.358v10.081h14.491v14.517h10.063V66.823    H128V56.742H113.912z" fill-rule="evenodd" id="Google_Plus_1_"/></g></g></svg>
+            </a>
+          </div>
+
+          
+        </article>
+        <footer class="footer reveal">
+  <p>
+    Chalk is a high quality, completely customizable, performant and 100% free
+    blog template for Jekyll built by
+    <a href="/about" title="About me">Nielsen Ramon</a>. Download it <a href="https://github.com/nielsenramon/chalk" target="_blank" title="Download Chalk">here</a>.
+  </p>
+</footer>
+
+      </div>
+    </div>
+  </main>
+  <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.16/webfont.js"></script>
+<script>
+  WebFont.load({
+    google: {
+      families: ['Cormorant Garamond:700', 'Lato:300,400,700']
+    }
+  });
+</script>
+
+
+  <script>
+    window.ga=function(){ga.q.push(arguments)};ga.q=[];ga.l=+new Date;
+    ga('create','UA-97180334-1','auto');ga('send','pageview')
+  </script>
+  <script src="https://www.google-analytics.com/analytics.js" async defer></script>
+
+
+<script type="text/javascript" src="/assets/vendor.js"></script>
+<script type="text/javascript" src="/assets/application.js"></script>
+
+</body>
+</html>

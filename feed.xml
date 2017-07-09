@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>house of times</title>
+    <description></description>
+    <link></link>
+    <atom:link href="/feed.xml" rel="self" type="application/rss+xml" />
+    
+      <item>
+        <title>내 소식</title>
+        <description></description>
+        <pubDate>Sun, 09 Jul 2017 00:00:00 +0000</pubDate>
+        <link>/posts/newspaper-0709</link>
+        <guid isPermaLink="true">/posts/newspaper-0709</guid>
+      </item>
+    
+      <item>
+        <title>[번역] redux-saga 튜토리얼</title>
+        <description></description>
+        <pubDate>Thu, 27 Apr 2017 00:00:00 +0000</pubDate>
+        <link>/posts/redux-saga</link>
+        <guid isPermaLink="true">/posts/redux-saga</guid>
+      </item>
+    
+      <item>
+        <title>JQuery 에서 Redux 까지</title>
+        <description></description>
+        <pubDate>Thu, 06 Apr 2017 00:00:00 +0000</pubDate>
+        <link>/posts/redux-articles</link>
+        <guid isPermaLink="true">/posts/redux-articles</guid>
+      </item>
+    
+      <item>
+        <title>ES6 destructuring assignment</title>
+        <description></description>
+        <pubDate>Wed, 29 Mar 2017 00:00:00 +0000</pubDate>
+        <link>/posts/es6-destructing-assignment</link>
+        <guid isPermaLink="true">/posts/es6-destructing-assignment</guid>
+      </item>
+    
+      <item>
+        <title>처음 만나는 도커</title>
+        <description></description>
+        <pubDate>Sat, 25 Feb 2017 00:00:00 +0000</pubDate>
+        <link>/posts/hello-docker</link>
+        <guid isPermaLink="true">/posts/hello-docker</guid>
+      </item>
+    
+      <item>
+        <title>파이썬의 이터레이터와 제너레이터</title>
+        <description></description>
+        <pubDate>Fri, 24 Feb 2017 00:00:00 +0000</pubDate>
+        <link>/posts/generators-and-iterators</link>
+        <guid isPermaLink="true">/posts/generators-and-iterators</guid>
+      </item>
+    
+  </channel>
+</rss>
