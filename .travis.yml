@@ -1,6 +1,12 @@
 sudo: false
 language: ruby
-rvm: 2.2
+rvm: 2.2.1
+
+cache:
+  bundler: true
+  directories:
+    - bower_components
+    - node_modules
 
 install:
   - ./bin/setup
