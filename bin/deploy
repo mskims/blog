@@ -7,13 +7,6 @@ set -e
 
 echo "Started deploying"
 
-# Checkout gh-pages branch.
-if [ `git branch | grep gh-pages` ]
-then
-  git branch -D gh-pages
-fi
-git checkout -b gh-pages
-
 # Build site.
 bower install
 bundle exec jekyll build
@@ -25,7 +18,7 @@ rm -R _site/
 
 # Push to gh-pages.
 git add -fA
-git commit --allow-empty -m "$(git log -1 --pretty=%B) [ci skip]"
+git commit --allow-empty -m "Deploy to gh-pages [ci skip]"
 
 git push --force --quiet "https://${GITHUB_TOKEN}@github.com/mskims/blog.git" master:gh-pages
 
