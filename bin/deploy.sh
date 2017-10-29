@@ -7,6 +7,9 @@ set -e
 
 echo "Started deploying"
 
+bundle check || bundle install
+bundle update
+
 # Build site.
 bower install
 bundle exec jekyll build
