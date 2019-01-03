@@ -1,0 +1,10 @@
+lang: ko
+title: blog.mskim.me
+email: its@mskim.me
+description: >-
+  Minseok Kim's personal blog. All about my activities, ideas, technologies, and studies
+url: ""
+
+# Build settings
+markdown: kramdown
+exclude: [vendor]
