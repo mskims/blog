@@ -5,6 +5,7 @@ description: >-
   Minseok Kim's personal blog. All about my activities, ideas, technologies, and studies
 url: "http://blog.mskim.me"
 repository: mskims/blog
+baseurl: ""
 
 # Build settings
 markdown: kramdown
