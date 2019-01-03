@@ -1,7 +1,6 @@
 ---
 layout: page
 title: About
-permalink: /about
 ---
 
 [![github](http://img.shields.io/badge/github-mskims-24292e.svg)](http://github.com/mskims) [![email](http://img.shields.io/badge/email-its@mskim.me-3498db.svg)](mailto:{{site.email}})
