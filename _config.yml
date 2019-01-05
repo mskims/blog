@@ -7,6 +7,7 @@ url: "http://blog.mskim.me"
 repository: mskims/blog
 baseurl: ""
 permalink: "posts/:title/"
+google_analytics: UA-97180334-1
 
 # Build settings
 markdown: kramdown
