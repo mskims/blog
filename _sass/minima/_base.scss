@@ -58,7 +58,18 @@ img {
   vertical-align: middle;
 }
 
+img + em {
+	display: block;
+	font-size: 90%;
+	color: $grey-color;
+	text-align: center;
+	margin-top: $spacing-unit / 4;
+}
 
+p > img {
+	display: block;
+	margin: 0 auto;
+}
 
 /**
  * Figures
