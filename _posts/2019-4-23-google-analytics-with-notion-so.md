@@ -16,7 +16,7 @@ categories: productivity
 
 그중 가장 큰 문제는 바로 **사용자 추적이 불가능**하다는 점입니다. 네이버 블로그나 브런치같은 블로그 서비스들은 자체적인 사용자 추적 서비스를 제공합니다. 기본적인 페이지 조회수, 방문자의 인구 통계등 자세한 통계를 제공합니다. 하지만 노션에는 이런 기능들이 없습니다. 적어도 지금까지는요. 추가좀 해주세요 😁
 
-![](/assets/naver-visitors-stat.png)
+![네이버 블로그의 사용자 추적 서비스](/assets/naver-visitors-stat.png)
 *네이버 블로그의 사용자 추적 서비스*
 
 서비스에서 사용자 추적 기능을 제공하지 않거나, 직접 블로그 시스템을 개발하고 있다면 다른 방법을 사용할 수도 있습니다. 구글이나 페이스북에서 제공하는 분석 도구를 적용하면 됩니다. 하지만 노션에서는 이런 분석 도구도 적용할 수 없습니다. [구글 애널리틱스](https://marketingplatform.google.com/about/analytics/)나 [페이스북 픽셀](https://www.facebook.com/business/learn/facebook-ads-pixel)같은 대표적인 분석 도구들은 [자바 스크립트](https://en.wikipedia.org/wiki/JavaScript)라는 언어를 기반으로 작동하는데, 노션에서는 사용자가 자바 스크립트를 실행할 방법이 없기 때문입니다.
@@ -34,7 +34,7 @@ categories: productivity
 3. 사용자가 bit.ly/OOOO으로 접근하면, bit.ly 서버는 URL을 notion.so/OOOO 으로 변경 후 이동시킨다.
 4. bit.ly 서버는 URL을 이동시키는 과정에서 사용자 추적 데이터를 남기고, 통계를 제공한다.
 
-![](/assets/bitly-visitors-stat.png)
+![bit.ly의 사용자 추적 서비스](/assets/bitly-visitors-stat.png)
 *[bit.ly](http://bit.ly)의 사용자 추적 서비스*
 
 이 방법은 사용자 추적을 간단히 구현할 수 있다는 장점이 있지만, 사용자가 [bit.ly](http://bit.ly) URL 외의 다른 URL으로 페이지에 접근하는 경우는 추적하지 못한다는 큰 문제가 있습니다.
@@ -58,7 +58,7 @@ categories: productivity
    - 더 자세한 내용은 [이 문서](https://github.com/mskims/notion-ga#parameter-reference)를 참고하세요.
 2. 생성한 URL을 Embed 이미지에 입력하고, 추적이 필요한 노션 페이지에 삽입합니다.
 
-![](/assets/notion-ga-preview.gif)
+![미리 보기](/assets/notion-ga-preview.gif)
 
 끝입니다. 거창한 기반 지식을 알아야 할 필요도 없고, [bit.ly](http://bit.ly) 같은 외부 서비스를 활용할 필요도 없습니다. 그저 URL을 Embed 이미지로 삽입하면 됩니다.
 
