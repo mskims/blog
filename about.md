@@ -1,6 +1,6 @@
 ---
 layout: page
-title: About
+title: 나에 대해
 ---
 
 [![github](http://img.shields.io/badge/github-mskims-24292e.svg)](http://github.com/mskims) [![email](http://img.shields.io/badge/email-its@mskim.me-3498db.svg)](mailto:{{site.email}})
@@ -88,7 +88,7 @@ B2C 핫딜 서비스 **번개딜** [@번개장터](http://m.bunjang.co.kr)
   - 초기 기획에 적극적으로 참여하여 의견을 제시했습니다.
 - 프론트엔드 개발
   - 서비스 배포를 빠르게 할 수 있도록, 앱 내 웹뷰를 통해 서빙했습니다.
-  - 각각의 디바이스마다 자바스크립트 엔진이 달랐기 때문에, 호환성을 신중히 고려하여 개발했습니다.
+  - 디바이스마다 자바스크립트 엔진이 달랐기 때문에, 호환성을 신중히 고려하여 개발했습니다.
   - 기술: Django, Javascript, HTML/CSS
 - 백엔드 개발
   - 서비스에 필요한 테이블 스키마를 설계했습니다.
@@ -100,6 +100,13 @@ B2C 핫딜 서비스 **번개딜** [@번개장터](http://m.bunjang.co.kr)
 
 # 개인 프로젝트
 
+notion-ga
+
+- notion.so 페이지의 페이지 뷰를 추적하기 위해 만든 프로젝트입니다.
+- notion 페이지의 페이지 뷰 통계를 Google Analytics에서 확인할 수 있습니다.
+- [github.com/mskims/notion-ga](https://github.com/mskims/notion-ga)
+- [블로그 글](http://blog.mskim.me/posts/google-analytics-with-notion-so/)
+
 OS X용 음악 플레이어
 
 - `지니` 서비스가 네이티브 플레이어를 제공하지 않아 직접 개발하였습니다. electron을 사용했습니다.
@@ -110,11 +117,6 @@ redux-saga 문서 번역
 - 영문으로 된 redux-saga 문서를 국문으로 번역했습니다.
 - [mskims.github.io/redux-saga-in-korean](https://mskims.github.io/redux-saga-in-korean)
 
-유치원 홈페이지 외주
-
-- 외부 디자이너가 전달해준 디자인을 바탕으로 프론트 및 백엔드를 개발했습니다.
-- [naraekinder.com](http://naraekinder.com)
-
 d-coin
 
 - 고교 재학시절, 학우간 빈번한 현금 거래에서 발생하던 사고와 갈등을 방지하기 위해, `d-coin`이라는 현금 대체 서비스를 운영했습니다.
@@ -123,10 +125,9 @@ d-coin
 
 디지텍위키
 
-- 고교 재학시절, 학우간 정보 공유 및 친목 도모를 위해 `디지텍위키`라는 위키피디아 서비스를 운영했습니다. 운영 2주만에 50만 페이지뷰를 기록했습니다.
-- 늘어나는 악의적 콘텐츠를 필터링하지 못했고, 결국 경찰 신고에 의해 폐쇄당했습니다.
-- 모든 기능을 손수 하드코딩 하였습니다.
-  - 마크다운 엔진, 위키 모듈등
+- 고교 재학시절, 학우간 정보 공유 및 친목 도모를 위해 `디지텍위키`라는 위키피디아 서비스를 운영했습니다.
+- 마크다운 엔진, 위키 시스템을 개발했습니다.
+- 많은 트래픽을 처리하는 경험을 얻었습니다.
 - [github.com/mskims/digitech-wiki](https://github.com/mskims/digitech-wiki)
 
 모의투자 게임
@@ -137,6 +138,7 @@ d-coin
 
 # 커뮤니티 활동
 
+- [AWS Summit Seoul 2019](https://aws.amazon.com/ko/events/summits/seoul/)
 - [파이콘 한국 2018](https://www.pycon.kr/2018/)
 - [AWS Summit Seoul 2018](https://aws.amazon.com/ko/summits/seoul/agenda/)
 - [Korea DevOps Meetup '18](http://meetup.devopskorea.com)
