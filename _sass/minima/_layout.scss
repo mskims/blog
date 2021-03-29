@@ -102,6 +102,10 @@
 	font-weight: bold;
 }
 
+.post-title {
+  word-break: break-all;
+}
+
 .post-content {
 	max-width: 890px;
 	margin-bottom: $spacing-unit;
