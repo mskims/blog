@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" xml:lang="ko"><generator uri="https://jekyllrb.com/" version="3.9.0">Jekyll</generator><link href="http://blog.mskim.me/feed.xml" rel="self" type="application/atom+xml" /><link href="http://blog.mskim.me/" rel="alternate" type="text/html" hreflang="ko" /><updated>2021-03-29T15:28:29+00:00</updated><id>http://blog.mskim.me/feed.xml</id><title type="html">김민석의 블로그</title><subtitle>김민석의 개인 블로그</subtitle><entry><title type="html">MySQL: caching_sha2_password 삽질기</title><link href="http://blog.mskim.me/posts/mysql-caching_sha_password_missing/" rel="alternate" type="text/html" title="MySQL: caching_sha2_password 삽질기" /><published>2021-03-26T14:00:00+00:00</published><updated>2021-03-26T14:00:00+00:00</updated><id>http://blog.mskim.me/posts/mysql-caching_sha_password_missing</id><content type="html" xml:base="http://blog.mskim.me/posts/mysql-caching_sha_password_missing/">&lt;p&gt;python3.7, sqlalchemy, mysqlclient 환경. 로컬 및 원격 서버에선 문제 없이 돌아가던 서비스가 도커 가상 환경에서 문제 발생.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;ERROR 2059 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;HY000&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;: Authentication plugin &lt;span class=&quot;s1&quot;&gt;'caching_sha2_password'&lt;/span&gt; cannot be loaded:
+/usr/lib64/mysql/plugin/caching_sha2_password.so: cannot open shared object file: No such file or directory
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;caching_sha2_password 플러그인의 부재. caching_sha2_password: DB 사용자 비밀번호 해싱 플러그인. MySQL 8.0부터 기본으로 추가됨. 기존 mysql_native_password보다 보안이 강화된 버전.&lt;/p&gt;
+
+&lt;h2 id=&quot;시도-1-패키지-업데이트&quot;&gt;시도 1. 패키지 업데이트&lt;/h2&gt;
+
+&lt;p&gt;해당 플러그인이 넓게 사용된지 얼마 되지 않았기 때문에, stable linux distribution의 클라이언트에선 지원하지 않을 수 있음. 해당 프로젝트에선 mysqlclient를 사용. mysqlclient는 libmysqlclient-dev패키지를 사용함. (debian / ubuntu)&lt;/p&gt;
+
+&lt;p&gt;공식 파이썬 도커 이미지에선 stable debian distribution인 buster, stretch를 사용함. 그러나 해당 배포판의 libmysqlclient-dev 패키지는 caching_sha2_password 플러그인을 지원하지 않기때문에 오류 발생. 정확히는 libmysqlclient-dev 패키지가 의존하고있는 패키지가 지원하지 않음 (&lt;a href=&quot;https://packages.debian.org/buster/libmariadb3&quot;&gt;mariadb-10.5&lt;/a&gt;). 2020년 9월이 되서야 플러그인 지원 업데이트가 되었고 bullseye 배포판에서부터 해당 버전이 포함됨.&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; -- Otto Kekäläinen &amp;lt;otto@debian.org&amp;gt;  Tue, 06 Oct 2020 14:44:39 +0300
+
+mariadb-10.5 (1:10.5.5-1) unstable; urgency=medium
+
+  * New upstream version 10.5.5 (Closes: #968895)
+    - Include caching_sha2_password.so plugin for libmariadb3 (Closes: #962597)
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;하지만 bullseye 배포판은 아직 unstable이라 공식 파이썬 도커 이미지에선 사용할 수 없음. (공식 파이썬 도커 이미지는 debian 배포판별로 태그를 제공함, 3.9-buster, 3.7.10-stretch 등)&lt;/p&gt;
+
+&lt;p&gt;apt 커맨드 수도 없이 때려보며 디버깅하다 포기&lt;/p&gt;
+
+&lt;h2 id=&quot;시도-2-클라이언트를-바꿔보자&quot;&gt;시도 2. 클라이언트를 바꿔보자&lt;/h2&gt;
+
+&lt;p&gt;클라이언트를 바꿔보자. 해당 플러그인을 지원하는 PyMySQL을 사용하기로 함. 클라이언트를 바꿔보니 거짓말처럼 너무 잘 됨. 그냥 사용하려고 했으나 퍼포먼스 관련 문제로 사용하지 못함. PyMySQL은 순수 파이썬으로 구현됐기 때문에 부분적으로 C로 작성된 mysqlclient보다 훨씬 느림. &lt;a href=&quot;https://stackoverflow.com/a/46396881/6007308&quot;&gt;벤치마크&lt;/a&gt;에 의하면 최대 10배 느림. 포기&lt;/p&gt;
+
+&lt;h2 id=&quot;시도-3-다른-리눅스-배포판을-써보자&quot;&gt;시도 3. 다른 리눅스 배포판을 써보자&lt;/h2&gt;
+
+&lt;p&gt;또 다른 방법, 다른 리눅스 배포판을 써보자. 파이썬 공식 도커 이미지에서 제공하는 alpine linux based image 사용. 그러나 C 컴파일링 관련 이슈덕분에 파이썬 패키지 설치 시간이 곱절로 뛰는 문제가 있음. 포기.. &lt;a href=&quot;https://pythonspeed.com/articles/alpine-docker-python/&quot;&gt;link&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;시도-4-포기하자&quot;&gt;시도 4. 포기하자&lt;/h2&gt;
+
+&lt;p&gt;이틀에 걸쳐 몇 시간동안 삽질하니까 도커 쓰기 싫어짐. 포기하고 mysql_native_password로 바꾸자고 생각했으나.. 기적같이 해결&lt;/p&gt;
+
+&lt;h2 id=&quot;해결&quot;&gt;해결&lt;/h2&gt;
+
+&lt;p&gt;몇 시간 끙끙 앓다가 배포판 이미지에 최신 버전 패키지를 강제로 설치해서 해결함. debian bullseye 는 unstable distribution이긴 하지만 전체 이미지를 쓰는게 아니니 괜찮을거라 생각&lt;/p&gt;
+
+&lt;div class=&quot;language-docker highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;FROM&lt;/span&gt;&lt;span class=&quot;s&quot;&gt; python:3.7-buster&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;RUN &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s1&quot;&gt;'deb http://deb.debian.org/debian bullseye main'&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; /etc/apt/sources.list.d/bullseye.list &lt;span class=&quot;se&quot;&gt;\
+&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; apt-get update &lt;span class=&quot;nt&quot;&gt;-y&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\
+&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; apt-get purge default-libmysqlclient-dev &lt;span class=&quot;nt&quot;&gt;-y&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\
+&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; apt autoremove &lt;span class=&quot;nt&quot;&gt;-y&lt;/span&gt; &lt;span class=&quot;se&quot;&gt;\
+&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;&amp;amp;&amp;amp;&lt;/span&gt; apt-get &lt;span class=&quot;nb&quot;&gt;install &lt;/span&gt;default-libmysqlclient-dev/bullseye &lt;span class=&quot;nt&quot;&gt;-y&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;</content><author><name></name></author><category term="develop" /><summary type="html">python3.7, sqlalchemy, mysqlclient 환경. 로컬 및 원격 서버에선 문제 없이 돌아가던 서비스가 도커 가상 환경에서 문제 발생.</summary></entry><entry><title type="html">노션에서 구글 애널리틱스 사용하기</title><link href="http://blog.mskim.me/posts/google-analytics-with-notion-so/" rel="alternate" type="text/html" title="노션에서 구글 애널리틱스 사용하기" /><published>2019-04-23T10:30:00+00:00</published><updated>2019-04-23T10:30:00+00:00</updated><id>http://blog.mskim.me/posts/google-analytics-with-notion-so</id><content type="html" xml:base="http://blog.mskim.me/posts/google-analytics-with-notion-so/">&lt;h1 id=&quot;tldr&quot;&gt;TL;DR&lt;/h1&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;https://github.com/mskims/notion-ga&quot;&gt;노션 페이지에서 구글 애널리틱스를 사용할 수 있도록 도와주는 프록시 서버&lt;/a&gt;를 만들었습니다.&lt;/li&gt;
+  &lt;li&gt;페이지 조회 이벤트를 추적할 수 있습니다.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;노션에는 문서들을 웹 사이트나 블로그처럼 사용할 수 있는 ‘Public Access’ 옵션이 있습니다. ‘Public Access’ 옵션을 활성화하면 사용자를 따로 워크 스페이스나 개별 문서에 초대하지 않아도 모든 사용자가 자유롭게 문서를 열람할 수 있습니다.&lt;/p&gt;
+
+&lt;p&gt;‘Public Access’ 옵션을 활용하면 노션의 강력한 기능들을 블로깅에 활용할 수 있기 때문에 많은 사용자, 기업들이 노션을 블로그로 사용하고 있습니다. 하지만 이런 블로그들은 노션이라는 한정된 플랫폼에 기반하기 때문에, 몇가지 문제가 발생할 수 있습니다.&lt;/p&gt;
+
+&lt;p&gt;그중 가장 큰 문제는 바로 &lt;strong&gt;사용자 추적이 불가능&lt;/strong&gt;하다는 점입니다. 네이버 블로그나 브런치같은 블로그 서비스들은 자체적인 사용자 추적 서비스를 제공합니다. 기본적인 페이지 조회수, 방문자의 인구 통계등 자세한 통계를 제공합니다. 하지만 노션에는 이런 기능들이 없습니다. 적어도 지금까지는요. 추가좀 해주세요 😁&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/naver-visitors-stat.png&quot; alt=&quot;네이버 블로그의 사용자 추적 서비스&quot; /&gt;
+&lt;em&gt;네이버 블로그의 사용자 추적 서비스&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;서비스에서 사용자 추적 기능을 제공하지 않거나, 직접 블로그 시스템을 개발하고 있다면 다른 방법을 사용할 수도 있습니다. 구글이나 페이스북에서 제공하는 분석 도구를 적용하면 됩니다. 하지만 노션에서는 이런 분석 도구도 적용할 수 없습니다. &lt;a href=&quot;https://marketingplatform.google.com/about/analytics/&quot;&gt;구글 애널리틱스&lt;/a&gt;나 &lt;a href=&quot;https://www.facebook.com/business/learn/facebook-ads-pixel&quot;&gt;페이스북 픽셀&lt;/a&gt;같은 대표적인 분석 도구들은 &lt;a href=&quot;https://en.wikipedia.org/wiki/JavaScript&quot;&gt;자바 스크립트&lt;/a&gt;라는 언어를 기반으로 작동하는데, 노션에서는 사용자가 자바 스크립트를 실행할 방법이 없기 때문입니다.&lt;/p&gt;
+
+&lt;p&gt;이것도 안되고 저것도 안되면 정녕 노션에서는 사용자를 추적할 수 있는 방법이 없는걸까요? 정말요?&lt;/p&gt;
+
+&lt;p&gt;다행히 노션에서도 여러가지 방법으로 사용자를 추적할 수 있습니다. 리다이렉션을 통한 추적과 이미지를 통한 추적 방법이 있는데요. 지금부터 천천히 소개 드리겠습니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;1-리다이렉션&quot;&gt;1. 리다이렉션&lt;/h2&gt;
+
+&lt;p&gt;첫 번째 방법은 &lt;a href=&quot;https://ko.wikipedia.org/wiki/URL_리다이렉션&quot;&gt;URL 리다이렉션&lt;/a&gt; 서비스의 일종인 &lt;a href=&quot;http://bit.ly&quot;&gt;bit.ly&lt;/a&gt;를 활용한 방법입니다. 노션 페이지의 URL을 bit.ly/OOOO 으로 연결시킨 후에, 사용자를 연결된 URL로 접근하도록 유도하는 방식입니다. 자세히 정리해보면 다음과 같이 진행됩니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;노션 페이지의 URL을 bit.ly에 연결시킨다. (notion.so/OOOO → bit.ly/OOOO)&lt;/li&gt;
+  &lt;li&gt;연결된 URL(bit.ly/OOOO)를 사용자들에게 공유한다.&lt;/li&gt;
+  &lt;li&gt;사용자가 bit.ly/OOOO으로 접근하면, bit.ly 서버는 URL을 notion.so/OOOO 으로 변경 후 이동시킨다.&lt;/li&gt;
+  &lt;li&gt;bit.ly 서버는 URL을 이동시키는 과정에서 사용자 추적 데이터를 남기고, 통계를 제공한다.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/bitly-visitors-stat.png&quot; alt=&quot;bit.ly의 사용자 추적 서비스&quot; /&gt;
+&lt;em&gt;&lt;a href=&quot;http://bit.ly&quot;&gt;bit.ly&lt;/a&gt;의 사용자 추적 서비스&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;이 방법은 사용자 추적을 간단히 구현할 수 있다는 장점이 있지만, 사용자가 &lt;a href=&quot;http://bit.ly&quot;&gt;bit.ly&lt;/a&gt; URL 외의 다른 URL으로 페이지에 접근하는 경우는 추적하지 못한다는 큰 문제가 있습니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;2-구글-애널리틱스---measurement-protocol&quot;&gt;2. 구글 애널리틱스 - Measurement Protocol&lt;/h2&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;구글 애널리틱스 못 쓴다면서요!&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;죄송합니다. 사실 사용할 수 있습니다. &lt;a href=&quot;https://developers.google.com/analytics/devguides/collection/protocol/v1/&quot;&gt;Measurement Protocol&lt;/a&gt;을 이용한다면요.&lt;/p&gt;
+
+&lt;p&gt;구글 애널리틱스에 이벤트를 보내는 방법은 두 가지가 있습니다. 첫 번째는 모두가 익히 알고 있는 자바 스크립트를 이용한 방법입니다. 하지만 노션에서는 자바 스크립트를 사용할 수 없기 때문에 사용할 수 없습니다. 아쉽지만 두 번째 방법으로 넘어가도록 하죠.&lt;/p&gt;
+
+&lt;p&gt;두 번째 방법은 구글 애널리틱스의 &lt;strong&gt;Measurement Protocol&lt;/strong&gt;을 이용한 방법입니다. Measurement Protocol은 자바 스크립트를 통하지 않고도 구글 애널리틱스에 이벤트를 보낼 수 있도록 만든 일종의 통신 규약입니다. 주로 자바 스크립트를 사용할 수 없는 환경에서 사용합니다. 노션에서 사용하기에 적절한 방법이죠.&lt;/p&gt;
+
+&lt;p&gt;방법은 간단합니다. Measurement Protocol가 정의한 규약에 따라서 HTTP 요청을 구글 애널리틱스 서버로 보내기만 하면 됩니다. 그걸 노션에서 어떻게 하냐구요? 노션 페이지에 Embed 이미지만 넣으면 됩니다. 그 외에도 할게 많긴 한데, 제가 미리 만들어 놓았으니 걱정하지 않아도 됩니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;URL에 트래킹 ID, 도메인, 페이지 경로를 추가하여 URL을 생성합니다.
+    &lt;ul&gt;
+      &lt;li&gt;https://notion-ga.ohwhos.now.sh/collect?tid={트래킹 ID}&amp;amp;host={도메인}&amp;amp;page={경로}&lt;/li&gt;
+      &lt;li&gt;(예) https://notion-ga.ohwhos.now.sh/collect?tid=UA-00000000-1&amp;amp;host=mskim.me&amp;amp;page=/careers/data-engineer&lt;/li&gt;
+      &lt;li&gt;트래킹 ID를 모르겠다면 &lt;a href=&quot;https://support.google.com/analytics/answer/7476135?hl=ko#trackingID&quot;&gt;이 문서&lt;/a&gt;를 참고하세요.&lt;/li&gt;
+      &lt;li&gt;더 자세한 내용은 &lt;a href=&quot;https://github.com/mskims/notion-ga#parameter-reference&quot;&gt;이 문서&lt;/a&gt;를 참고하세요.&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;생성한 URL을 Embed 이미지에 입력하고, 추적이 필요한 노션 페이지에 삽입합니다.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/assets/notion-ga-preview.gif&quot; alt=&quot;미리 보기&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;끝입니다. 거창한 기반 지식을 알아야 할 필요도 없고, &lt;a href=&quot;http://bit.ly&quot;&gt;bit.ly&lt;/a&gt; 같은 외부 서비스를 활용할 필요도 없습니다. 그저 URL을 Embed 이미지로 삽입하면 됩니다.&lt;/p&gt;
+
+&lt;p&gt;어떻게 이런 방법이 가능할까요? 이미지 하나만 추가했을 뿐 인데 어떻게 구글 애널리틱스에 데이터가 전송될까요? 그건 &lt;a href=&quot;https://github.com/mskims/notion-ga&quot;&gt;notion-ga&lt;/a&gt;라는 프록시 서버가 이미지 조회 요청을 구글 애널리틱스에 전달하고 있기 때문입니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;notion-ga&quot;&gt;notion-ga&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/mskims/notion-ga&quot;&gt;https://github.com/mskims/notion-ga&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;notion-ga는 제가 작성한 간단한 프록시 서버입니다. 사용자의 이미지 조회 요청을 Measurement Protocol에 부합하도록 변환하고, 변환된 요청을 구글 애널리틱스에 전달하는 역할을 합니다. 구현이 어떻게 되었는지 궁금하신 분들은 위의 저장소를 확인하시면 됩니다. 구경 하시고 스타도 찍어 주시고.. MIT 라이센스니 이것 저것 다 해보셔도 됩니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;마치며&quot;&gt;마치며&lt;/h2&gt;
+
+&lt;p&gt;이렇게 노션 페이지에서 구글 애널리틱스를 사용하여 사용자를 추적하는 방법을 정리해 봤습니다. 노션을 애용하는 한 개발자로서, 제가 공유한 지식이 많은 분들께 도움이 되었으면 좋겠습니다. 읽어주셔서 감사합니다.&lt;/p&gt;
+
+&lt;p&gt;피드백은 이메일(its@mskim.me)로 부탁드립니다.&lt;/p&gt;</content><author><name></name></author><category term="productivity" /><summary type="html">TL;DR</summary></entry><entry><title type="html">유의미한 학습</title><link href="http://blog.mskim.me/posts/effective-learning/" rel="alternate" type="text/html" title="유의미한 학습" /><published>2019-01-24T10:30:00+00:00</published><updated>2019-01-24T10:30:00+00:00</updated><id>http://blog.mskim.me/posts/effective%20learning</id><content type="html" xml:base="http://blog.mskim.me/posts/effective-learning/">&lt;p&gt;개발자는 끊임없이 학습해야 한다. 비단 개발자뿐만 아니라, 모든 인간은 학습해야 한다. 효율적이고 유의미한 학습을 하기 위해서는 어떤 자세와 마음가짐으로 임해야 할까? 현재 자신의 수준과 학습의 난이도를 예를 들며 알아보자.&lt;/p&gt;
+
+&lt;p&gt;현재 자신의 수준이 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;i&lt;/code&gt;라고 할 때, 한 단계 높은 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;i+1&lt;/code&gt; 난이도의 자극이 주어질 때만 유의미한 학습이 가능하다고 한다. 예를 들면, 컴퓨터 비전공자가 프로그래밍을 처음 배울 때, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Hello World&lt;/code&gt;를 출력하는 간단한 파이썬 스크립트를 작성하는 것 대신에, C언어의 포인터 구조를 학습하거나, Java의 복잡한 개발 환경을 구축해야 한다면? 큰 어려움을 겪게 될 것이고, 흥미를 잃어 학습이 비효율적으로 진행될 수 있다는 것이다.&lt;/p&gt;
+
+&lt;p&gt;그렇다면, 업무에서 끊임없는 학습 태도를 유지하려면 어떻게 해야 할까? 업무의 난이도와 자신의 실력이 일치하는지 확인을 자주 하면 된다.&lt;/p&gt;
+
+&lt;p&gt;업무가 너무 쉽다면? 업무에 비해 자신의 실력이 높다는 뜻이다. 이럴 땐, 업무를 어렵게 만드는 것이 방안이 될 수 있다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;새로운 환경
+    &lt;ul&gt;
+      &lt;li&gt;도구의 사용을 줄인다&lt;/li&gt;
+      &lt;li&gt;새로운 언어, 프레임워크를 사용한다&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;새로운 목표
+    &lt;ul&gt;
+      &lt;li&gt;throughput을 높인다&lt;/li&gt;
+      &lt;li&gt;단, 오버 엔지니어링이 되지 않도록 조심한다&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;반대로, 업무가 너무 어려워서 진행하기 힘들다면? 너무 진부한 소리 같지만, 자신의 실력을 키워야 한다. 하지만 실력을 키우는 것이 하루아침에 되는 것은 아니다. 오랜 노력과 인고를 거쳐야 비로소 실력이 자란다. 그럼 당장 닥친 업무는 어떻게 처리하란 말일까? 실력이 자랄 때까지 기다릴 수는 없는 노릇이다.&lt;/p&gt;
+
+&lt;p&gt;이럴 땐 업무를 쉬운 단계부터 차근차근 시작해보자. 단위 테스트를 짜는 것처럼 기능을 잘게 쪼개어서, 최소 단위의 함수부터 시작하면 어렵지 않게 업무를 마무리할 수 있을 것이다.&lt;/p&gt;
+
+&lt;h1 id=&quot;정리&quot;&gt;정리&lt;/h1&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;업무가 너무 쉽다면?
+    &lt;ul&gt;
+      &lt;li&gt;업무를 어렵게 만든다
+        &lt;ul&gt;
+          &lt;li&gt;새로운 환경&lt;/li&gt;
+          &lt;li&gt;도구의 사용을 줄인다&lt;/li&gt;
+          &lt;li&gt;새로운 언어, 프레임워크를 사용한다&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;새로운 목표
+        &lt;ul&gt;
+          &lt;li&gt;throughput을 높인다&lt;/li&gt;
+          &lt;li&gt;단, 오버 엔지니어링이 되지 않도록 조심한다&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+  &lt;li&gt;업무가 너무 어렵다면?
+    &lt;ul&gt;
+      &lt;li&gt;실력을 높인다
+        &lt;ul&gt;
+          &lt;li&gt;장기적인 학습 (스터디, 서적, 개인 프로젝트 등)&lt;/li&gt;
+          &lt;li&gt;단기적인 해결 (Pair 프로그래밍,  튜토리얼 문서 등)&lt;/li&gt;
+        &lt;/ul&gt;
+      &lt;/li&gt;
+      &lt;li&gt;업무를 쉬운 단계부터 차근차근 한다&lt;/li&gt;
+    &lt;/ul&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;참고 자료&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;&lt;a href=&quot;http://egloos.zum.com/agile/v/5749946&quot;&gt;http://egloos.zum.com/agile/v/5749946&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;</content><author><name></name></author><category term="translation" /><summary type="html">개발자는 끊임없이 학습해야 한다. 비단 개발자뿐만 아니라, 모든 인간은 학습해야 한다. 효율적이고 유의미한 학습을 하기 위해서는 어떤 자세와 마음가짐으로 임해야 할까? 현재 자신의 수준과 학습의 난이도를 예를 들며 알아보자.</summary></entry><entry><title type="html">[번역] redux-saga 튜토리얼</title><link href="http://blog.mskim.me/posts/redux-saga/" rel="alternate" type="text/html" title="[번역] redux-saga 튜토리얼" /><published>2017-04-27T03:00:00+00:00</published><updated>2017-04-27T03:00:00+00:00</updated><id>http://blog.mskim.me/posts/redux-saga</id><content type="html" xml:base="http://blog.mskim.me/posts/redux-saga/">&lt;blockquote&gt;
+  &lt;p&gt;이 글은 &lt;a href=&quot;https://redux-saga.js.org/&quot;&gt;공식문서 의 Beginner tutorial&lt;/a&gt; 을 한국어로 번역한 글입니다.&lt;/p&gt;
+
+  &lt;p&gt;전체 문서는 &lt;a href=&quot;https://mskims.github.io/redux-saga-in-korean/&quot;&gt;한국어 번역 문서&lt;/a&gt; 를 참조해주세요.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h1 id=&quot;튜토리얼&quot;&gt;튜토리얼&lt;/h1&gt;
+
+&lt;h2 id=&quot;목적&quot;&gt;목적&lt;/h2&gt;
+
+&lt;p&gt;이 튜토리얼은 redux-saga 를 가능한 쉬운 방법으로 소개할 것 입니다.&lt;/p&gt;
+
+&lt;p&gt;튜토리얼을 위해서, 우리는 Redux 저장소에 있는 간단한 카운터 예시를 사용할겁니다.
+이 카운터 애플리케이션은 아주 간단하면서, 과도하게 빠지지 않고 redux-sage 의 기본 컨셉들을 설명 하기에 딱입니다.&lt;/p&gt;
+
+&lt;h3 id=&quot;초기-설정&quot;&gt;초기 설정&lt;/h3&gt;
+
+&lt;p&gt;시작하기 전에, &lt;a href=&quot;https://github.com/redux-saga/redux-saga-beginner-tutorial&quot;&gt;튜토리얼 저장소&lt;/a&gt; 를 클론 하세요.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;이 튜토리얼의 코드들은 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sagas&lt;/code&gt; 브랜치에 있습니다.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;커맨드 라인에서 다음 명령어를 실행하세요:&lt;/p&gt;
+
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;cd &lt;/span&gt;redux-saga-beginner-tutorial
+&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;npm &lt;span class=&quot;nb&quot;&gt;install&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;애플리케이션을 시작하기 위해서는 다음 명령어를 실행하시면 됩니다:&lt;/p&gt;
+
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;npm start
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;증가&lt;/code&gt; 와 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;감소&lt;/code&gt; 버튼이 있는 카운터로 아주 간단하게 시작하고, 그후 비동기 호출에 대해서 설명하겠습니다&lt;/p&gt;
+
+&lt;p&gt;이상이 없다면, 당신은 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;증가&lt;/code&gt; 와 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;감소&lt;/code&gt; 버튼과 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Counter: 0&lt;/code&gt; 이라는 메세지를 볼 수 있을것 입니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;만약 이 단계에서 어려움을 겪고계시다면, 고민하지 마시고 &lt;a href=&quot;https://github.com/redux-saga/redux-saga-beginner-tutorial/issues&quot;&gt;튜토리얼 저장소&lt;/a&gt; 에 에슈를 만들어주세요.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;hello-sagas&quot;&gt;Hello Sagas!&lt;/h2&gt;
+
+&lt;p&gt;첫번째 Saga 를 만들어봅시다! 전통을 따라, Saga 버전 ‘Hello, world’ 를 작성해 봅시다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sagas.js&lt;/code&gt; 파일을 만드신 후 다음 내용을 적으세요.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;export&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;helloSaga&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;console&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;log&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;Hello Sagas!&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;무서운것이 없습니다, 이건 그냥 평범한 함수일 뿐이에요. (&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;*&lt;/code&gt;를 제외하면요). 이것이 하는일은 콘솔에 환영 메세지를 적는것밖에 없습니다.&lt;/p&gt;
+
+&lt;p&gt;우리의 Saga 를 실행하기 위해서, 몇가지 할 일이 있습니다.&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Sagas 리스트와 함께 Saga 미들웨어를 만드세요. (지금까진 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;helloSaga&lt;/code&gt; 오직 하나입니다)&lt;/li&gt;
+  &lt;li&gt;Saga 미들웨어를 Redux 스토어에 연결하세요.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;이제 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main.js&lt;/code&gt; 를 작성해봅시다:&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;createStore&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;applyMiddleware&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;redux&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;createSagaMiddleware&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;redux-saga&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;helloSaga&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;./sagas&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;sagaMiddleware&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;createSagaMiddleware&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;store&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;createStore&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;reducer&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;applyMiddleware&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;sagaMiddleware&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;sagaMiddleware&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;helloSaga&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;action&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;type&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;store&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;dispatch&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;type&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;})&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;// rest unchanged&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;처음에, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;./sagas&lt;/code&gt; 모듈에서 가져온 우리의 Saga 를 임포트 합니다. 그리고 나서 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;redux-saga&lt;/code&gt; 라이브러리에서 가져온 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;createSagaMiddleware&lt;/code&gt; 팩토리 함수를 사용해서 미들웨어를 만들었죠.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;helloSaga&lt;/code&gt; 를 실행하기 전에, 반드시 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;applyMiddleware&lt;/code&gt; 를 사용해서 미들웨어를 연결해야 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sagaMiddleware.run(helloSaga)&lt;/code&gt; 를 통해 Saga 를 시작할 수 있습니다..&lt;/p&gt;
+
+&lt;p&gt;지금까지 우리의 Saga 는 특별하지 않습니다. 이건 단지 로그 메세지만을 남기고 종료될 뿐입니다.&lt;/p&gt;
+
+&lt;h2 id=&quot;비동기-호출&quot;&gt;비동기 호출&lt;/h2&gt;
+
+&lt;p&gt;이제, 오리지널 카운터 데모 가까이 무언가를 추가해봅시다. 비동기 호출을 설명하기 위해 클릭 1초 후 증가되는 또다른 버튼을 추가할겁니다.&lt;/p&gt;
+
+&lt;p&gt;먼저, UI 컴포넌트에 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onIncrementAsync&lt;/code&gt; 라는 콜백을 넣을겁니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;Counter&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;({&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;onIncrement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;onDecrement&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;onIncrementAsync&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;})&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt;
+  &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt; &lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;button&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;onClick&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;onIncrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nx&quot;&gt;Increment&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;after&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;second&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/button&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;gt;
+&lt;/span&gt;    &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;hr&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;/&amp;gt;&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;div&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt;
+      &lt;span class=&quot;nx&quot;&gt;Clicked&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;times&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/div&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;gt;
+&lt;/span&gt;  &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;sr&quot;&gt;/div&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;&amp;gt;
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;다음으로, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onIncrementAsync&lt;/code&gt; 를 스토어 액션에 연결해야 합니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main.js&lt;/code&gt; 모듈을 다음과 같이 수정하겠습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;render&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;nx&quot;&gt;ReactDOM&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;render&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;o&quot;&gt;&amp;lt;&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;Counter&lt;/span&gt;
+      &lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;store&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getState&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()}&lt;/span&gt;
+      &lt;span class=&quot;nx&quot;&gt;onIncrement&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;action&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;INCREMENT&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)}&lt;/span&gt;
+      &lt;span class=&quot;nx&quot;&gt;onDecrement&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;action&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;DECREMENT&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)}&lt;/span&gt;
+      &lt;span class=&quot;nx&quot;&gt;onIncrementAsync&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;{()&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;action&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;INCREMENT_ASYNC&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)}&lt;/span&gt; &lt;span class=&quot;sr&quot;&gt;/&amp;gt;&lt;/span&gt;&lt;span class=&quot;err&quot;&gt;,
+&lt;/span&gt;    &lt;span class=&quot;nb&quot;&gt;document&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;getElementById&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;root&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;p&gt;명심하세요, redux-thunk 와는 달리 우리의 컴포넌트는 순수 액션 오브젝트만 dispatch 할겁니다.&lt;/p&gt;
+
+&lt;p&gt;이제 비동기 호출을 구현하기 위해 또다른 Saga 를 소개해볼까 합니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;각각의 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;INCREMENT_ASYNC&lt;/code&gt; 액션에서, 우리는 다음과 같은 작업을 수행할 태스크를 시작하고자 합니다.&lt;/p&gt;
+  &lt;ul&gt;
+    &lt;li&gt;1 초를 기다린 후 카운터 증가&lt;/li&gt;
+  &lt;/ul&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;다음 코드를 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sagas.js&lt;/code&gt; 모듈에 추가하세요.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;delay&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;redux-saga&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;put&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;takeEvery&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;redux-saga/effects&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;// worker Saga: 비동기 증가 태스크를 수행할겁니다.&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;export&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;yield&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;delay&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;yield&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;put&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;type&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;INCREMENT&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;})&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;// watcher Saga: 각각의 INCREMENT_ASYNC 에 incrementAsync 태스크를 생성할겁니다.&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;export&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;watchIncrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;yield&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;takeEvery&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;INCREMENT_ASYNC&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;설명할 때가 왔군요.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delay&lt;/code&gt; 라는 유틸리티 함수를 임포트 했는데요, 이 함수는 설정된 시간 이후에 resolve 를 하는 &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise&quot;&gt;Promise&lt;/a&gt; 객체를 리턴합니다. 우리는 이 함수를 제너레이터를 &lt;em&gt;정지&lt;/em&gt; 하는데 사용할겁니다.&lt;/p&gt;
+
+&lt;p&gt;Sagas 는 오브젝트들을 redux-saga 미들웨어에 &lt;em&gt;yield&lt;/em&gt; 하는 &lt;a href=&quot;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/function*&quot;&gt;제너레이터 함수&lt;/a&gt; 로 구현되었습니다. &lt;em&gt;yield된&lt;/em&gt; 오브젝트들은 미들웨어에 의해 해석되는 명령의 한 종류입니다. Promise 가 미들웨어에 yield 될 때, 미들웨어는 Promise 가 끝날때 까지 Saga 를 일시정지 시킬것 입니다. 위의 예시에서, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; Saga 는 1초 후에 일어날 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delay&lt;/code&gt;의 resolve 에 의해 Promise 가 리턴될때 까지 정지되어있을겁니다.&lt;/p&gt;
+
+&lt;p&gt;Promise 가 한번 resolve 되고 나면, 미들웨어는 Saga 를 다시 작동시키면서, 다음 yield 까지 코드를 실행합니다. 이 예제에서 다음 상태는 미들웨어에게 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;INCREMENT&lt;/code&gt; 액션을 dispach 하게 알려주는  &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;put({type: 'INCREMENT'})&lt;/code&gt; 의 결과 객체가 됩니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;put&lt;/code&gt; 은 우리가 &lt;em&gt;이펙트&lt;/em&gt; 라고 부르는 예중 하나입니다. 이펙트는 미들웨어에 의해 수행되는 명령을 담고있는 간단한 자바스크립트 객체입니다. 미들웨어가 Saga 에 의해 yield 된 이펙트를 받을때, Saga 는 이펙트가 수행될때까지 정지되어 있을겁니다.&lt;/p&gt;
+
+&lt;p&gt;정리하자면, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; Saga 는 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delay(1000)&lt;/code&gt; 호출에 의해 1초동안 자고있다가, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;INCREMENT&lt;/code&gt; 액션을 dispatch 하게 되는것이죠.&lt;/p&gt;
+
+&lt;p&gt;다음으로, 우리는 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;watchIncrementAsync&lt;/code&gt; 라는 또다른 Saga를 만들었습니다. dispatch된 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;INCREMENT_ASYNC&lt;/code&gt; 액션을 바라보고, 매번 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; 를 실행하기 위해 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;redux-saga&lt;/code&gt; 패키지가 제공하는 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;takeEvery&lt;/code&gt; 헬퍼 함수를 사용했습니다.&lt;/p&gt;
+
+&lt;p&gt;이제 두개의 Saga가 있네요, 이제 두 Saga 모두 한번에 실행해야할 필요가 생겼습니다, 이 작업을 하려면, 다른 Saga들을 시작해야할 책임이 있는 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;rootSaga&lt;/code&gt; 를 추가해봅시다.&lt;/p&gt;
+
+&lt;p&gt;자 이제 여기 코드들을 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sagas.js&lt;/code&gt; 에 추가해보세요.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// 모든 Saga들을 한번에 시작하기 위한 하나의 지점입니다.&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;export&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;default&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;rootSaga&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;yield&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;watchIncrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;]&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;이 Saga는 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;helloSaga&lt;/code&gt; Saga 와 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;watchIncrementAsync&lt;/code&gt; Saga 가 호출된 결과의 배열을 yield 합니다. 이것은 생선된 두 제너레이터가 병렬로 시작된다는것을 의미하죠. 이제 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sagaMiddleware.run&lt;/code&gt; 를 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;main.js&lt;/code&gt; 의 root Saga에 주입할 일만 남았습니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;rootSaga&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;./sagas&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;sagaMiddleware&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;createSagaMiddleware&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;store&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;...&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;sagaMiddleware&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;run&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;rootSaga&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+&lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h2 id=&quot;테스트&quot;&gt;테스트&lt;/h2&gt;
+
+&lt;p&gt;이제 우리의 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; Saga 가 바람직한 태스크를 수행하는지 확실하게 해야겠죠? 테스트를 만들어 봅시다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;sagas.spec.js&lt;/code&gt; 파일을 만듭시다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;test&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;tape&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;./sagas&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;incrementAsync Saga test&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;assert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+
+  &lt;span class=&quot;c1&quot;&gt;// now what ?&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; 는 제너레이터 함수입니다. 이것을 실행하면, 이터레이터 오브젝트를 반환하고, 이터레이터의 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next&lt;/code&gt; 메소드는 다음과 같은 모양을 가진 객체를 돌려줍니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; { done: boolean, value: any }&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;value&lt;/code&gt; 필드는 yield 된 표현식을 포함합니다. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;yield&lt;/code&gt; 다음 표현식의 결과 같은 것 말이죠.
+&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;done&lt;/code&gt; 필드는 아직 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;yield&lt;/code&gt; 표현이 남아있는지, 아니면 제너레이터가 종료되었는지 가리킵니다.&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; 로 예를 들자면, 제너레이터는 두개의 값을 연속으로 yield 합니다.&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;yield delay(1000)&lt;/code&gt;&lt;/li&gt;
+  &lt;li&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;yield put({type: 'INCREMENT'})&lt;/code&gt;&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;그래서 우리가 제너레이터의 next 메소드를 세번 연속하여 부른다면, 다음과 같은 결과값을 얻게 됩니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; { done: false, value: &amp;lt;result of calling delay(1000)&amp;gt; }&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; { done: false, value: &amp;lt;result of calling put({type: 'INCREMENT'})&amp;gt; }&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; { done: true, value: undefined }&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;처음 두개 호출은 yield 표현의 결과를 돌려줍니다. 3번째 호출은 더이상 yield 가 없기 때문에 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;done&lt;/code&gt; 필드는 true 로 설정되고, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; 제너레이터가 아무것도 리턴하지 않기 때문에 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;value&lt;/code&gt; 필드는 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;undefined&lt;/code&gt; 로 설정됩니다.&lt;/p&gt;
+
+&lt;p&gt;자 이제, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; 안에서 로직을 테스트하기 위해, 돌려받은 제너레이터를 반복하고, 제너레이터에 의해 yield 된 값들을 간단히 체크할겁니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;test&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;tape&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;./sagas&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;incrementAsync Saga test&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;assert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+
+  &lt;span class=&quot;nx&quot;&gt;assert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;deepEqual&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;done&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;false&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;???&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+    &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;incrementAsync should return a Promise that will resolve after 1 second&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;하지만 Promise 에선 비교연산을 할 수 없는데 어떻게 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delay&lt;/code&gt; 의 리턴값을 테스트 하죠?  만약 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delay&lt;/code&gt; 가 &lt;em&gt;평범한&lt;/em&gt; 값을 돌려준다면 테스트하기 쉬울텐데요..&lt;/p&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;redux-saga&lt;/code&gt; 는 위의 고민을 해결할 방법을 제시하고 있습니다. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; 에서 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delay(1000)&lt;/code&gt; 을 직접적으로 호출하는것 대신, 우린 &lt;em&gt;간접적으로&lt;/em&gt; 호출할겁니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;c1&quot;&gt;// ...&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;delay&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;redux-saga&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;put&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;call&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;takeEvery&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;redux-saga/effects&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;export&lt;/span&gt; &lt;span class=&quot;kd&quot;&gt;function&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;*&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;c1&quot;&gt;// use the call Effect&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;yield&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;call&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;delay&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+  &lt;span class=&quot;k&quot;&gt;yield&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;put&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;type&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;INCREMENT&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;})&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;yield delay(1000)&lt;/code&gt; 대신 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;yield call(delay, 1000)&lt;/code&gt; 를 하고있습니다, 무엇이 달라졌는지 보이시나요?&lt;/p&gt;
+
+&lt;p&gt;첫번째 경우에서, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;delay(1000)&lt;/code&gt; yield 구문은 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next&lt;/code&gt; 의 호출자로 넘겨지기 전에 실행되고, (여기서 호출자는 미들웨어가 되거나, 제너레이터 함수를 실행하고 리턴된 제너레이터를 넘어 반복하는 테스트코드가 되어야 합니다.)  호출자가 얻게 되는것은 Promise 입니다. 아래 코드를 참고하세요.&lt;/p&gt;
+
+&lt;p&gt;두번째 경우에선, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;call(delay, 1000)&lt;/code&gt; yield 구문은 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;next&lt;/code&gt; 의 호출자에게 넘겨지게 됩니다. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;put&lt;/code&gt; 과 유사한 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;call&lt;/code&gt; 은 미들웨어에게 주어진 함수와 인자들을 실행하라는 명령을 하는 이펙트를 리턴합니다.
+사실, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;put&lt;/code&gt; 과 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;call&lt;/code&gt; 은 스스로 어떤 dispatch 나 비동기적인 호출을 하지 않습니다. 그들은 단지 순수한 자바스크립트 객체를 돌려줄 뿐입니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nx&quot;&gt;put&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;type&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;INCREMENT&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;})&lt;/span&gt; &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; { PUT: {type: 'INCREMENT'} }&lt;/span&gt;
+&lt;span class=&quot;nx&quot;&gt;call&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;delay&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;        &lt;span class=&quot;c1&quot;&gt;// =&amp;gt; { CALL: {fn: delay, args: [1000]}}&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;무슨일이 일어날까요? 미들웨어는 각각의 yield 된 이펙트들을 검사한뒤, 어떻게 이펙트를 수행할지 결정합니다. 만약 이펙트의 타입이 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;PUT&lt;/code&gt; 이라면, 미들웨어는 스토어에 액션을 dispatch 할것입니다. &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;CALL&lt;/code&gt; 인 경우엔 주어진 함수를 실행하게 되는것 이고요.&lt;/p&gt;
+
+&lt;p&gt;이 이펙트생성과 이펙트 실행의 분리는 제너레이터를 놀랍게도 쉽게 테스트가 가능하도록 만듭니다.&lt;/p&gt;
+
+&lt;div class=&quot;language-javascript highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;test&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;tape&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;;&lt;/span&gt;
+
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;put&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;call&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;redux-saga/effects&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;delay&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;redux-saga&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+&lt;span class=&quot;k&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;}&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;./sagas&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+
+&lt;span class=&quot;nx&quot;&gt;test&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;incrementAsync Saga test&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;assert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&amp;gt;&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt;
+  &lt;span class=&quot;kd&quot;&gt;const&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;nx&quot;&gt;incrementAsync&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+
+  &lt;span class=&quot;nx&quot;&gt;assert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;deepEqual&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;call&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;delay&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1000&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;),&lt;/span&gt;
+    &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;incrementAsync Saga must call delay(1000)&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+  &lt;span class=&quot;nx&quot;&gt;assert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;deepEqual&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;().&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;put&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;({&lt;/span&gt;&lt;span class=&quot;na&quot;&gt;type&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;INCREMENT&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;}),&lt;/span&gt;
+    &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;incrementAsync Saga must dispatch an INCREMENT action&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+  &lt;span class=&quot;nx&quot;&gt;assert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;deepEqual&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;
+    &lt;span class=&quot;nx&quot;&gt;gen&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;next&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(),&lt;/span&gt;
+    &lt;span class=&quot;p&quot;&gt;{&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;done&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;true&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;na&quot;&gt;value&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; &lt;span class=&quot;kc&quot;&gt;undefined&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;},&lt;/span&gt;
+    &lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;incrementAsync Saga must be done&lt;/span&gt;&lt;span class=&quot;dl&quot;&gt;'&lt;/span&gt;
+  &lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+
+  &lt;span class=&quot;nx&quot;&gt;assert&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;nx&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;p&quot;&gt;});&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;put&lt;/code&gt; 과 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;call&lt;/code&gt; 이 순수 객체를 반환하기 때문에, 테스트 코드에서 같은 함수들을 재사용할수 있게 되었고, &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;incrementAsync&lt;/code&gt; 의 로직을 테스트 하기 위해 단순히 제너레이터를 반복하고 값에 대해 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;deepEqual&lt;/code&gt; 테스트를 할수 있게 되었습니다.&lt;/p&gt;
+
+&lt;p&gt;위의 테스트를 진행하기 위한 코드입니다:&lt;/p&gt;
+
+&lt;div class=&quot;language-sh highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;npm &lt;span class=&quot;nb&quot;&gt;test&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;이 테스트는 콘솔에 결과를 보고해야 합니다.&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;이 글은 &lt;a href=&quot;https://redux-saga.js.org/&quot;&gt;공식문서 의 Beginner tutorial&lt;/a&gt; 을 한국어로 번역한 글입니다.&lt;/p&gt;
+
+  &lt;p&gt;전체 문서는 &lt;a href=&quot;https://mskims.github.io/redux-saga-in-korean/&quot;&gt;한국어 번역 문서&lt;/a&gt; 를 참조해주세요.&lt;/p&gt;
+&lt;/blockquote&gt;</content><author><name></name></author><category term="translation" /><summary type="html">이 글은 공식문서 의 Beginner tutorial 을 한국어로 번역한 글입니다. 전체 문서는 한국어 번역 문서 를 참조해주세요.</summary></entry></feed>
